@@ -210,7 +210,7 @@ body {
         grid-template-columns: 1fr 1fr;
     }
 }
-@media (max-width: 768px) {
+@media (max-width: 960px) {
     .cards-container {
         grid-template-columns: repeat(auto-fill, minmax(100%, 1fr));
     }
