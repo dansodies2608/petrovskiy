@@ -210,7 +210,11 @@ body {
         grid-template-columns: 1fr 1fr;
     }
 }
-
+@media (max-width: 768px) {
+    .cards-container {
+        grid-template-columns: repeat(auto-fill, minmax(100%, 1fr));
+    }
+}
 /* Стили для скроллящейся таблицы */
 .scrollable-table {
     overflow-x: auto;
