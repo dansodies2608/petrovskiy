@@ -1,10 +1,28 @@
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWW-ROmCPEXiPt3r8B1cSBjbwTn4Xb7r9WH8Z8g-PyBagEX3Rk_h-jKUTH8hcQSHw6/exec';
 const SECRET_KEY = 'YOUR_SECRET';
-// NEW DATA
-document.addEventListener('DOMContentLoaded', function() {
-  fetchDataFromGoogleSheet();
-  setupTabHandlers();
-});
+
+// Основные функции
+function setupTabHandlers() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      
+      let tabId = '';
+      switch(this.dataset.count) {
+        case '0': tabId = 'new-cars-tab'; break;
+        case '1': tabId = 'used-cars-tab'; break;
+        case '2': tabId = 'service-tab'; break;
+        case '3': tabId = 'balance-tab'; break;
+      }
+      document.getElementById(tabId).classList.add('active');
+    });
+  });
+}
 
 async function fetchDataFromGoogleSheet() {
   try {
@@ -34,7 +52,7 @@ function processData(currentData, prevData) {
       Кашира: { brands: {}, total: 0, jok: 0 }
     };
 
-    data.forEach(item => {
+    (data || []).forEach(item => {
       const salesPoint = item.salesPoint === 'Каширское ш.' ? 'Кашира' : item.salesPoint;
       if (!result[salesPoint]) return;
 
@@ -59,11 +77,7 @@ function processData(currentData, prevData) {
 
 function updateDashboard(currentData, prevData) {
   const processed = processData(currentData, prevData);
-  
-  // Обновляем вкладку "Новые авто"
   updateNewCarsTab(processed.current, processed.previous);
-  
-  // Обновляем вкладку "Авто с пробегом"
   updateUsedCarsTab(currentData, prevData);
 }
 
@@ -79,14 +93,14 @@ function updateNewCarCard(currentPointData, prevPointData, cardIndex) {
   const card = document.querySelector(`.cards-container .card:nth-child(${cardIndex})`);
   if (!card) return;
 
-  // Основные показатели
+  // Обновляем основные показатели
   card.querySelector('.stat-row:nth-child(2) span:last-child').textContent = currentPointData.total;
   card.querySelector('.stat-row:nth-child(4) span:last-child').textContent = formatNumber(currentPointData.jok);
   card.querySelector('.stat-row:nth-child(5) span:last-child').textContent = currentPointData.total > 0 
     ? formatNumber(currentPointData.jok / currentPointData.total) 
     : '0';
 
-  // Таблица динамики
+  // Обновляем таблицу динамики
   const tableBody = card.querySelector('.sales-dynamics-table tbody');
   if (!tableBody) return;
 
@@ -107,17 +121,20 @@ function updateNewCarCard(currentPointData, prevPointData, cardIndex) {
       <td class="fixed-column">${brand}</td>
       <td>${currentBrandData.count}</td>
       <td>${prevBrandData.count || 0}</td>
-      <td>0</td> <!-- АППГ - можно добавить при наличии данных -->
+      <td>0</td>
       <td class="${growthPrevMonth >= 0 ? 'positive' : 'negative'}">
         ${growthPrevMonth >= 0 ? '+' : ''}${growthPrevMonth}%
       </td>
-      <td class="positive">+0%</td> <!-- Заглушка для АППГ -->
+      <td class="positive">+0%</td>
     `;
     tableBody.appendChild(row);
   }
 }
 
-// Аналогичные функции для usedCars и других вкладок...
+function updateUsedCarsTab(currentData, prevData) {
+  // Реализация аналогична updateNewCarsTab
+  // ...
+}
 
 function formatNumber(num) {
   return Math.round(num).toLocaleString('ru-RU');
@@ -131,10 +148,15 @@ function updateMonthHeader(monthYear) {
 }
 
 function showErrorNotification(message) {
-  // Реализация уведомления об ошибке
   const notification = document.createElement('div');
   notification.className = 'error-notification';
   notification.textContent = message;
   document.body.appendChild(notification);
   setTimeout(() => notification.remove(), 5000);
 }
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+  setupTabHandlers(); // Сначала инициализируем обработчики
+  fetchDataFromGoogleSheet(); // Затем загружаем данные
+});
