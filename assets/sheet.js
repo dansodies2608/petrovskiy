@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function fetchDataFromGoogleSheet() {
   try {
-    console.log('Отправка запроса к Google Apps Script...');
+    console.log('Отправка запроса к Google Apps Script');
     
     const response = await fetch(`${SCRIPT_URL}?key=${SECRET_KEY}`);
     
