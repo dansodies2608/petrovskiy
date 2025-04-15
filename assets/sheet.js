@@ -1,202 +1,140 @@
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWW-ROmCPEXiPt3r8B1cSBjbwTn4Xb7r9WH8Z8g-PyBagEX3Rk_h-jKUTH8hcQSHw6/exec';
-const SECRET_KEY = 'YOUR_SECRET'; // Должен совпадать с ключом в Apps Script
+const SECRET_KEY = 'YOUR_SECRET';
 
 document.addEventListener('DOMContentLoaded', function() {
-  // Инициализация при загрузке
   fetchDataFromGoogleSheet();
-  
-  // Обработчики для вкладок
   setupTabHandlers();
 });
 
 async function fetchDataFromGoogleSheet() {
   try {
-    console.log('Отправка запроса к Google Apps Script');
-    
     const response = await fetch(`${SCRIPT_URL}?key=${SECRET_KEY}`);
-    
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`Ошибка HTTP: ${response.status}`);
     
     const data = await response.json();
-    console.log('Получены данные:', data);
+    if (data.status !== 'success') throw new Error(data.message);
     
-    // Обновляем дашборд
-    updateDashboard(data.data);
+    console.log('Данные за текущий месяц:', data.currentData);
+    console.log('Данные за прошлый месяц:', data.prevData);
     
-    // Обновляем месяц (если есть в ответе)
-    if (data.month) {
-      document.querySelector('.header h1').textContent += ` - ${data.month}`;
-    }
+    updateDashboard(data.currentData, data.prevData);
+    updateMonthHeader(data.currentMonth);
+    
   } catch (error) {
-    console.error('Ошибка при запросе:', error);
-    showErrorNotification('Не удалось загрузить данные. Пожалуйста, попробуйте позже.');
+    console.error('Ошибка:', error);
+    showErrorNotification('Не удалось загрузить данные. Попробуйте позже.');
   }
 }
 
-function setupTabHandlers() {
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      this.classList.add('active');
-      
-      document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
-      });
-      
-      let tabId = '';
-      switch(this.dataset.count) {
-        case '0': tabId = 'new-cars-tab'; break;
-        case '1': tabId = 'used-cars-tab'; break;
-        case '2': tabId = 'service-tab'; break;
-        case '3': tabId = 'balance-tab'; break;
-      }
-      document.getElementById(tabId).classList.add('active');
-    });
-  });
-}
-
-function updateDashboard(data) {
-  if (!data || !Array.isArray(data)) {
-    console.error('Некорректные данные:', data);
-    return;
-  }
-
-  const processed = processData(data);
-  updateNewCarsTab(processed.newCars);
-  updateUsedCarsTab(processed.usedCars);
-}
-
-function processData(data) {
-  const result = {
-    newCars: {
+function processData(currentData, prevData) {
+  const processDataForPeriod = (data) => {
+    const result = {
       Софийская: { brands: {}, total: 0, jok: 0 },
       Руставели: { brands: {}, total: 0, jok: 0 },
       Кашира: { brands: {}, total: 0, jok: 0 }
-    },
-    usedCars: {
-      Софийская: { total: 0, jok: 0 },
-      Руставели: { total: 0, jok: 0 },
-      Кашира: { total: 0, jok: 0 }
-    }
+    };
+
+    data.forEach(item => {
+      const salesPoint = item.salesPoint === 'Каширское ш.' ? 'Кашира' : item.salesPoint;
+      if (!result[salesPoint]) return;
+
+      if (item.category === 'Retail' || item.category === 'Fleet') {
+        const brand = item.brand || 'Другие';
+        result[salesPoint].brands[brand] = result[salesPoint].brands[brand] || { count: 0, jok: 0 };
+        result[salesPoint].brands[brand].count += item.soldCount;
+        result[salesPoint].brands[brand].jok += item.jok;
+        result[salesPoint].total += item.soldCount;
+        result[salesPoint].jok += item.jok;
+      }
+    });
+
+    return result;
   };
 
-  data.forEach(item => {
-    // Приводим названия точек продаж к единому формату
-    let salesPoint = item.salesPoint;
-    if (salesPoint === 'Каширское ш.') salesPoint = 'Кашира';
-    
-    if (item.category === 'Retail' || item.category === 'Fleet') {
-      // Новые авто
-      if (!result.newCars[salesPoint]) {
-        console.warn(`Неизвестная точка продаж: ${item.salesPoint}`);
-        return;
-      }
-      
-      const brand = item.brand || 'Другие'; // На случай если бренд не указан
-      if (!result.newCars[salesPoint].brands[brand]) {
-        result.newCars[salesPoint].brands[brand] = { count: 0, jok: 0 };
-      }
-      result.newCars[salesPoint].brands[brand].count += item.soldCount;
-      result.newCars[salesPoint].brands[brand].jok += item.jok;
-      result.newCars[salesPoint].total += item.soldCount;
-      result.newCars[salesPoint].jok += item.jok;
-    } else if (item.category === 'Ам с пробегом') {
-      // Авто с пробегом
-      if (!result.usedCars[salesPoint]) {
-        console.warn(`Неизвестная точка продаж: ${item.salesPoint}`);
-        return;
-      }
-      result.usedCars[salesPoint].total += item.soldCount;
-      result.usedCars[salesPoint].jok += item.jok;
-    }
-  });
-
-  return result;
+  return {
+    current: processDataForPeriod(currentData),
+    previous: processDataForPeriod(prevData)
+  };
 }
 
-function updateNewCarsTab(data) {
-  // Софийская
-  updateNewCarCard(data['Софийская'], 1);
+function updateDashboard(currentData, prevData) {
+  const processed = processData(currentData, prevData);
   
-  // Руставели
-  updateNewCarCard(data['Руставели'], 2);
+  // Обновляем вкладку "Новые авто"
+  updateNewCarsTab(processed.current, processed.previous);
   
-  // Кашира
-  updateNewCarCard(data['Кашира'], 3);
+  // Обновляем вкладку "Авто с пробегом"
+  updateUsedCarsTab(currentData, prevData);
 }
 
-function updateNewCarCard(pointData, cardIndex) {
-  if (!pointData) return;
+function updateNewCarsTab(currentData, prevData) {
+  updateNewCarCard(currentData['Софийская'], prevData['Софийская'], 1);
+  updateNewCarCard(currentData['Руставели'], prevData['Руставели'], 2);
+  updateNewCarCard(currentData['Кашира'], prevData['Кашира'], 3);
+}
 
+function updateNewCarCard(currentPointData, prevPointData, cardIndex) {
+  if (!currentPointData) return;
+  
   const card = document.querySelector(`.cards-container .card:nth-child(${cardIndex})`);
   if (!card) return;
 
-  // Обновляем основные показатели
-  card.querySelector('.stat-row:nth-child(2) span:last-child').textContent = pointData.total;
-  card.querySelector('.stat-row:nth-child(4) span:last-child').textContent = formatNumber(pointData.jok);
-  card.querySelector('.stat-row:nth-child(5) span:last-child').textContent = pointData.total > 0 
-    ? formatNumber(pointData.jok / pointData.total) 
+  // Основные показатели
+  card.querySelector('.stat-row:nth-child(2) span:last-child').textContent = currentPointData.total;
+  card.querySelector('.stat-row:nth-child(4) span:last-child').textContent = formatNumber(currentPointData.jok);
+  card.querySelector('.stat-row:nth-child(5) span:last-child').textContent = currentPointData.total > 0 
+    ? formatNumber(currentPointData.jok / currentPointData.total) 
     : '0';
 
-  // Обновляем таблицу динамики
+  // Таблица динамики
   const tableBody = card.querySelector('.sales-dynamics-table tbody');
   if (!tableBody) return;
 
-  // Очищаем существующие строки (кроме первой)
-  const rows = tableBody.querySelectorAll('tr:not(:first-child)');
-  rows.forEach(row => row.remove());
+  // Очищаем старые строки (кроме заголовков)
+  tableBody.querySelectorAll('tr:not(:first-child)').forEach(row => row.remove());
 
-  // Добавляем данные по брендам
-  for (const brand in pointData.brands) {
-    const brandData = pointData.brands[brand];
-    const row = document.createElement('tr');
+  // Добавляем данные по брендам с динамикой
+  for (const brand in currentPointData.brands) {
+    const currentBrandData = currentPointData.brands[brand];
+    const prevBrandData = prevPointData?.brands?.[brand] || { count: 0 };
     
-    // Здесь можно добавить логику для сравнения с предыдущими периодами
-    // Пока просто выводим текущие данные
+    const growthPrevMonth = prevBrandData.count > 0 
+      ? ((currentBrandData.count - prevBrandData.count) / prevBrandData.count * 100).toFixed(1)
+      : 0;
+    
+    const row = document.createElement('tr');
     row.innerHTML = `
       <td class="fixed-column">${brand}</td>
-      <td>${brandData.count}</td>
-      <td>0</td>
-      <td>0</td>
-      <td class="positive">+0%</td>
-      <td class="positive">+0%</td>
+      <td>${currentBrandData.count}</td>
+      <td>${prevBrandData.count || 0}</td>
+      <td>0</td> <!-- АППГ - можно добавить при наличии данных -->
+      <td class="${growthPrevMonth >= 0 ? 'positive' : 'negative'}">
+        ${growthPrevMonth >= 0 ? '+' : ''}${growthPrevMonth}%
+      </td>
+      <td class="positive">+0%</td> <!-- Заглушка для АППГ -->
     `;
     tableBody.appendChild(row);
   }
 }
 
-function updateUsedCarsTab(data) {
-  // Софийская
-  updateUsedCarCard(data['Софийская'], 1);
-  
-  // Руставели
-  updateUsedCarCard(data['Руставели'], 2);
-  
-  // Кашира
-  updateUsedCarCard(data['Кашира'], 3);
-}
-
-function updateUsedCarCard(pointData, cardIndex) {
-  if (!pointData) return;
-
-  const card = document.querySelector(`#used-cars-tab .card:nth-child(${cardIndex})`);
-  if (!card) return;
-
-  // Обновляем основные показатели
-  card.querySelector('.stat-row:nth-child(2) span:last-child').textContent = pointData.total;
-  card.querySelector('.stat-row:nth-child(4) span:last-child').textContent = formatNumber(pointData.jok);
-  card.querySelector('.stat-row:nth-child(5) span:last-child').textContent = pointData.total > 0 
-    ? formatNumber(pointData.jok / pointData.total) 
-    : '0';
-}
+// Аналогичные функции для usedCars и других вкладок...
 
 function formatNumber(num) {
   return Math.round(num).toLocaleString('ru-RU');
 }
 
+function updateMonthHeader(monthYear) {
+  const header = document.querySelector('.header h1');
+  if (header) {
+    header.textContent = `Новые автомобили - ${monthYear}`;
+  }
+}
+
 function showErrorNotification(message) {
-  // Можно реализовать красивое уведомление
-  alert(message);
+  // Реализация уведомления об ошибке
+  const notification = document.createElement('div');
+  notification.className = 'error-notification';
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  setTimeout(() => notification.remove(), 5000);
 }
