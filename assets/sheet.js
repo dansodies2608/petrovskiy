@@ -40,7 +40,7 @@ async function fetchDataFromGoogleSheet() {
     
     const data = await response.json();
     if (data.status !== 'success') throw new Error(data.message);
-    
+    console.log('Данные АППГ:', data.prevYearData);
     updateDashboard(data.currentData, data.prevData, data.prevYearData);
     updateMonthHeader(data.currentMonth);
     
@@ -55,6 +55,7 @@ async function fetchDataFromGoogleSheet() {
 // Обработка и преобразование данных
 function processData(currentData, prevData, prevYearData) {
   const processDataForPeriod = (data) => {
+    console.log('Обработка данных для периода:', data);
     const result = {
       Софийская: { brands: {}, total: 0, jok: 0 },
       Руставели: { brands: {}, total: 0, jok: 0 },
@@ -101,7 +102,16 @@ function updateNewCarsTab(currentData, prevData, prevYearData) {
 
 // Обновление карточки новых авто
 function updateNewCarCard(currentPointData, prevPointData, prevYearPointData, cardIndex) {
-  if (!currentPointData) return;
+  if (!currentPointData) {
+    console.error('Нет текущих данных для карточки', cardIndex);
+    return;
+  }
+  
+  console.log(`Данные для карточки ${cardIndex}:`, {
+    current: currentPointData,
+    prevMonth: prevPointData,
+    prevYear: prevYearPointData
+  });
   
   const card = document.querySelector(`.cards-container .card:nth-child(${cardIndex})`);
   if (!card) return;
