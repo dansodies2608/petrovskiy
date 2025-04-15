@@ -31,7 +31,6 @@ async function fetchDataFromGoogleSheet() {
     }
   } catch (error) {
     console.error('Ошибка при запросе:', error);
-    // Можно добавить уведомление пользователю об ошибке
     showErrorNotification('Не удалось загрузить данные. Пожалуйста, попробуйте позже.');
   }
 }
@@ -74,36 +73,39 @@ function processData(data) {
     newCars: {
       Софийская: { brands: {}, total: 0, jok: 0 },
       Руставели: { brands: {}, total: 0, jok: 0 },
-      "Каширское ш.": { brands: {}, total: 0, jok: 0 }
+      Кашира: { brands: {}, total: 0, jok: 0 }
     },
     usedCars: {
       Софийская: { total: 0, jok: 0 },
       Руставели: { total: 0, jok: 0 },
-      "Каширское ш.": { total: 0, jok: 0 }
+      Кашира: { total: 0, jok: 0 }
     }
   };
 
   data.forEach(item => {
-    const salesPoint = item.salesPoint;
+    // Приводим названия точек продаж к единому формату
+    let salesPoint = item.salesPoint;
+    if (salesPoint === 'Каширское ш.') salesPoint = 'Кашира';
     
     if (item.category === 'Retail' || item.category === 'Fleet') {
       // Новые авто
       if (!result.newCars[salesPoint]) {
-        console.warn(`Неизвестная точка продаж: ${salesPoint}`);
+        console.warn(`Неизвестная точка продаж: ${item.salesPoint}`);
         return;
       }
       
-      if (!result.newCars[salesPoint].brands[item.brand]) {
-        result.newCars[salesPoint].brands[item.brand] = { count: 0, jok: 0 };
+      const brand = item.brand || 'Другие'; // На случай если бренд не указан
+      if (!result.newCars[salesPoint].brands[brand]) {
+        result.newCars[salesPoint].brands[brand] = { count: 0, jok: 0 };
       }
-      result.newCars[salesPoint].brands[item.brand].count += item.soldCount;
-      result.newCars[salesPoint].brands[item.brand].jok += item.jok;
+      result.newCars[salesPoint].brands[brand].count += item.soldCount;
+      result.newCars[salesPoint].brands[brand].jok += item.jok;
       result.newCars[salesPoint].total += item.soldCount;
       result.newCars[salesPoint].jok += item.jok;
     } else if (item.category === 'Ам с пробегом') {
       // Авто с пробегом
       if (!result.usedCars[salesPoint]) {
-        console.warn(`Неизвестная точка продаж: ${salesPoint}`);
+        console.warn(`Неизвестная точка продаж: ${item.salesPoint}`);
         return;
       }
       result.usedCars[salesPoint].total += item.soldCount;
@@ -121,8 +123,8 @@ function updateNewCarsTab(data) {
   // Руставели
   updateNewCarCard(data['Руставели'], 2);
   
-  // Каширское ш.
-  updateNewCarCard(data['Каширское ш.'], 3);
+  // Кашира
+  updateNewCarCard(data['Кашира'], 3);
 }
 
 function updateNewCarCard(pointData, cardIndex) {
@@ -172,8 +174,8 @@ function updateUsedCarsTab(data) {
   // Руставели
   updateUsedCarCard(data['Руставели'], 2);
   
-  // Каширское ш.
-  updateUsedCarCard(data['Каширское ш.'], 3);
+  // Кашира
+  updateUsedCarCard(data['Кашира'], 3);
 }
 
 function updateUsedCarCard(pointData, cardIndex) {
