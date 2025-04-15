@@ -1,6 +1,33 @@
-<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWW-ROmCPEXiPt3r8B1cSBjbwTn4Xb7r9WH8Z8g-PyBagEX3Rk_h-jKUTH8hcQSHw6/exec';
+const SECRET_KEY = 'YOUR_SECRET'; // Должен совпадать с ключом в Apps Script
+
+// Функция для запроса данных
+async function fetchDataFromGoogleSheet() {
+  try {
+    console.log('Отправка запроса к Google Apps Script...');
+    
+    // Добавляем параметр key для авторизации
+    const response = await fetch(`${SCRIPT_URL}?key=${SECRET_KEY}`);
+    
+    if (!response.ok) {
+      throw new Error(`Ошибка HTTP: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Вывод в консоль
+    console.log('Успешный ответ:', {
+      month: data.month
+    });
+    
+    updateDashboard(data.data);
+  } catch (error) {
+    console.error('Ошибка при запросе:', error);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-  const salesData
+  const salesData = fetchDataFromGoogleSheet();
   function processData(data) {
     const result = {
       newCars: {
@@ -107,4 +134,3 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
-</script>
