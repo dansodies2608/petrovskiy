@@ -1,6 +1,6 @@
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWW-ROmCPEXiPt3r8B1cSBjbwTn4Xb7r9WH8Z8g-PyBagEX3Rk_h-jKUTH8hcQSHw6/exec';
 const SECRET_KEY = 'YOUR_SECRET';
-
+// NEW DATA
 document.addEventListener('DOMContentLoaded', function() {
   fetchDataFromGoogleSheet();
   setupTabHandlers();
