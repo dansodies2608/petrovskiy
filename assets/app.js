@@ -462,15 +462,15 @@ function updateBalanceTab(data) {
   `;
   cardsContainer.appendChild(liabilitiesCard);
 
-  const updateInfo = document.createElement("div");
-  updateInfo.className = "update-info";
-  updateInfo.style.marginTop = "20px";
-  updateInfo.style.fontSize = "14px";
-  updateInfo.style.color = "#666";
-  updateInfo.textContent = `Данные обновлены: ${
-    data.lastUpdated || "неизвестно"
-  }`;
-  container.appendChild(updateInfo);
+  // const updateInfo = document.createElement("div");
+  // updateInfo.className = "update-info";
+  // updateInfo.style.marginTop = "20px";
+  // updateInfo.style.fontSize = "14px";
+  // updateInfo.style.color = "#666";
+  // updateInfo.textContent = `Данные обновлены: ${
+  //   data.lastUpdated || "неизвестно"
+  // }`;
+  // container.appendChild(updateInfo);
 }
 
 function updateHeader() {
