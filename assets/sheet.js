@@ -1,19 +1,26 @@
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwsZbfzaUUCQ1fUaEM3_xyBbsgM_MbUVO8MorXsAoXjR0h7haSfG4-PfwIIhhdoIcj3/exec';
 const SECRET_KEY = 'YOUR_SECRET_KEY';
 
-// Главная функция инициализации
+// Планы продаж по точкам
+const SALES_PLANS = {
+  'Софийская': 50,
+  'Руставели': 50,
+  'Кашира': 50
+};
+
 document.addEventListener('DOMContentLoaded', function() {
   initDashboard();
+  showLoading(true);
 });
 
 function initDashboard() {
   setupTabHandlers();
   setupDateSelector();
-  loadData();
+  // Загружаем данные сразу при инициализации
+  loadData(true);
   createLoadingIndicator();
 }
 
-// Настройка вкладок
 function setupTabHandlers() {
   const tabs = document.querySelectorAll('.tab-btn');
   tabs.forEach(tab => {
@@ -27,39 +34,17 @@ function setupTabHandlers() {
       
       const tabId = getTabId(this.dataset.count);
       document.getElementById(tabId).classList.add('active');
-      
-      // Обновляем заголовок в зависимости от выбранной вкладки
       updateHeaderTitle(this.textContent.trim());
     });
   });
 }
 
-function updateHeaderTitle(tabName) {
-  const header = document.querySelector('.header h1');
-  if (header) {
-    const monthYear = document.getElementById('month-select').value + '/' + 
-                      document.getElementById('year-select').value;
-    header.textContent = `${tabName} - ${monthYear}`;
-  }
-}
-
-function getTabId(count) {
-  const tabs = {
-    '0': 'new-cars-tab',
-    '1': 'used-cars-tab', 
-    '2': 'service-tab',
-    '3': 'balance-tab'
-  };
-  return tabs[count] || 'new-cars-tab';
-}
-
-// Настройка выбора даты
 function setupDateSelector() {
   const monthSelect = document.getElementById('month-select');
   const yearSelect = document.getElementById('year-select');
   const applyBtn = document.getElementById('apply-date');
   
-  // Устанавливаем текущий месяц
+  // Устанавливаем текущий месяц и год
   const currentDate = new Date();
   monthSelect.value = currentDate.getMonth() + 1;
   
@@ -73,28 +58,28 @@ function setupDateSelector() {
   }
   yearSelect.value = currentYear;
   
-  // Сохранение выбора в localStorage
-  const savedMonth = localStorage.getItem('selectedMonth');
-  const savedYear = localStorage.getItem('selectedYear');
-  if (savedMonth) monthSelect.value = savedMonth;
-  if (savedYear) yearSelect.value = savedYear;
-  
-  // Обработчики изменений
+  // Удаляем сохранение в localStorage
   applyBtn.addEventListener('click', () => {
     showLoading(true);
-    loadData();
+    loadData(false); // false - не начальная загрузка
   });
 }
 
-// Загрузка данных
-async function loadData() {
+async function loadData(isInitialLoad) {
   try {
-    const month = document.getElementById('month-select').value;
-    const year = document.getElementById('year-select').value;
+    const monthSelect = document.getElementById('month-select');
+    const yearSelect = document.getElementById('year-select');
     
-    // Сохраняем выбор
-    localStorage.setItem('selectedMonth', month);
-    localStorage.setItem('selectedYear', year);
+    // Для начальной загрузки используем предыдущий месяц
+    if (isInitialLoad) {
+      const currentDate = new Date();
+      currentDate.setMonth(currentDate.getMonth() - 1); // Предыдущий месяц
+      monthSelect.value = currentDate.getMonth() + 1;
+      yearSelect.value = currentDate.getFullYear();
+    }
+    
+    const month = monthSelect.value;
+    const year = yearSelect.value;
     
     // Проверка на будущую дату
     const currentDate = new Date();
@@ -120,18 +105,12 @@ async function loadData() {
   }
 }
 
-// Обработка и отображение данных
 function processAndDisplayData(data) {
-  console.log('Получены данные:', data);
-  
-  // Обновляем заголовок с месяцем
   updateHeader(data.currentMonth);
   
-  // Обрабатываем данные для всех точек продаж
   const processedNewCars = processData(data.newCars.currentData, data.newCars.prevData, data.newCars.prevYearData);
   const processedUsedCars = processData(data.usedCars.currentData, data.usedCars.prevData, data.usedCars.prevYearData);
   
-  // Обновляем UI
   updateNewCarsTab(processedNewCars);
   updateUsedCarsTab(processedUsedCars);
 }
@@ -175,34 +154,67 @@ function processPeriodData(data, point) {
   return result;
 }
 
-// Обновление вкладки "Новые авто"
 function updateNewCarsTab(data) {
-  updateCard(data['Софийская'], 1);
-  updateCard(data['Руставели'], 2);
-  updateCard(data['Кашира'], 3);
+  updateCard(data['Софийская'], 1, 'Софийская');
+  updateCard(data['Руставели'], 2, 'Руставели');
+  updateCard(data['Кашира'], 3, 'Кашира');
 }
 
-function updateCard(pointData, cardIndex) {
+function updateCard(pointData, cardIndex, pointName) {
   const card = document.querySelector(`.cards-container .card:nth-child(${cardIndex})`);
   if (!card) return;
 
   const { current, prevMonth, prevYear } = pointData;
+  const plan = SALES_PLANS[pointName] || 0;
   
-  // Основные показатели
+  // Обновление основных показателей
+  card.querySelector('.stat-row:nth-child(1) span:last-child').textContent = plan;
   card.querySelector('.stat-row:nth-child(2) span:last-child').textContent = current.total;
+  
+  // Расчет отклонения
+  const deviation = calculateDeviation(current.total, plan);
+  const deviationElement = card.querySelector('.stat-row:nth-child(3) span:last-child');
+  deviationElement.textContent = formatDeviation(deviation);
+  deviationElement.className = getDeviationClass(deviation);
+  
+  // ЖОК и ЖОК/ед.
   card.querySelector('.stat-row:nth-child(4) span:last-child').textContent = formatNumber(current.jok);
-  card.querySelector('.stat-row:nth-child(5) span:last-child').textContent = current.total > 0 
-    ? formatNumber(current.jok / current.total) 
-    : '0';
+  
+  const jokPerUnitElement = card.querySelector('.stat-row:nth-child(5) span:last-child');
+  if (current.total > 0 && current.jok !== undefined) {
+    jokPerUnitElement.textContent = formatNumber(current.jok / current.total);
+  } else {
+    jokPerUnitElement.textContent = '0.00';
+  }
 
-  // Таблица динамики
+  // Обновление таблицы динамики
+  updateSalesTable(card, current, prevMonth, prevYear);
+}
+
+function updateSalesTable(card, current, prevMonth, prevYear) {
   const tableBody = card.querySelector('.sales-dynamics-table tbody');
   if (!tableBody) return;
 
-  // Очистка старых данных
-  tableBody.querySelectorAll('tr:not(:first-child)').forEach(row => row.remove());
+  tableBody.innerHTML = '';
 
-  // Добавление новых данных
+  // Добавляем строку с итогами
+  const growthMonthTotal = calculateGrowth(current.total, prevMonth.total);
+  const growthYearTotal = calculateGrowth(current.total, prevYear.total);
+
+  const totalRow = document.createElement('tr');
+  totalRow.innerHTML = `
+    <td class="fixed-column">Итого</td>
+    <td>${current.total}</td>
+    <td>${prevMonth.total || 0}</td>
+    <td>${prevYear.total > 0 ? prevYear.total : 'N/A'}</td>
+    <td class="${getGrowthClass(growthMonthTotal)}">${formatGrowth(growthMonthTotal)}</td>
+    <td class="${getGrowthClass(growthYearTotal)}">
+      ${prevYear.total > 0 ? formatGrowth(growthYearTotal) : 'N/A'}
+    </td>
+  `;
+  tableBody.appendChild(totalRow);
+
+  // Добавляем данные по брендам
   for (const brand in current.brands) {
     const currentBrand = current.brands[brand];
     const prevBrand = prevMonth.brands[brand] || { count: 0 };
@@ -226,7 +238,6 @@ function updateCard(pointData, cardIndex) {
   }
 }
 
-// Обновление вкладки "Авто с пробегом"
 function updateUsedCarsTab(data) {
   const points = ['Софийская', 'Руставели', 'Кашира'];
   
@@ -235,18 +246,46 @@ function updateUsedCarsTab(data) {
     const card = document.querySelector(`#used-cars-tab .card:nth-child(${cardIndex})`);
     if (!card) return;
 
-    const { current, prevMonth, prevYear } = data[point];
+    const { current } = data[point];
+    const plan = SALES_PLANS[point] || 0;
     
-    // Основные показатели
+    card.querySelector('.stat-row:nth-child(1) span:last-child').textContent = plan;
     card.querySelector('.stat-row:nth-child(2) span:last-child').textContent = current.total;
+    
+    const deviation = calculateDeviation(current.total, plan);
+    const deviationElement = card.querySelector('.stat-row:nth-child(3) span:last-child');
+    deviationElement.textContent = formatDeviation(deviation);
+    deviationElement.className = getDeviationClass(deviation);
+    
     card.querySelector('.stat-row:nth-child(4) span:last-child').textContent = formatNumber(current.jok);
-    card.querySelector('.stat-row:nth-child(5) span:last-child').textContent = current.total > 0 
-      ? formatNumber(current.jok / current.total) 
-      : '0';
+    
+    const jokPerUnitElement = card.querySelector('.stat-row:nth-child(5) span:last-child');
+    if (current.total > 0 && current.jok !== undefined) {
+      jokPerUnitElement.textContent = formatNumber(current.jok / current.total);
+    } else {
+      jokPerUnitElement.textContent = '0.00';
+    }
   });
 }
 
 // Вспомогательные функции
+function calculateDeviation(fact, plan) {
+  if (plan === 0) return fact === 0 ? 0 : Infinity;
+  return ((fact - plan) / plan) * 100;
+}
+
+function formatDeviation(value) {
+  if (value === Infinity) return '+∞%';
+  if (value === -Infinity) return '-∞%';
+  if (isNaN(value)) return 'N/A';
+  return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+}
+
+function getDeviationClass(value) {
+  if (value >= 0) return 'positive';
+  return 'negative';
+}
+
 function calculateGrowth(current, previous) {
   if (previous === 0) return current === 0 ? 0 : Infinity;
   return ((current - previous) / previous) * 100;
@@ -265,8 +304,11 @@ function getGrowthClass(value) {
   return 'neutral';
 }
 
-function formatNumber(num) {
-  return Math.round(num).toLocaleString('ru-RU');
+function formatNumber(num, decimals = 2) {
+  const rounded = typeof num === 'number' ? num.toFixed(decimals) : '0.00';
+  const parts = rounded.split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return parts.join('.');
 }
 
 function updateHeader(monthYear) {
@@ -278,7 +320,6 @@ function updateHeader(monthYear) {
   }
 }
 
-// UI элементы
 function createLoadingIndicator() {
   const loader = document.createElement('div');
   loader.id = 'loading-indicator';
