@@ -27,8 +27,20 @@ function setupTabHandlers() {
       
       const tabId = getTabId(this.dataset.count);
       document.getElementById(tabId).classList.add('active');
+      
+      // Обновляем заголовок в зависимости от выбранной вкладки
+      updateHeaderTitle(this.textContent.trim());
     });
   });
+}
+
+function updateHeaderTitle(tabName) {
+  const header = document.querySelector('.header h1');
+  if (header) {
+    const monthYear = document.getElementById('month-select').value + '/' + 
+                      document.getElementById('year-select').value;
+    header.textContent = `${tabName} - ${monthYear}`;
+  }
 }
 
 function getTabId(count) {
@@ -68,16 +80,15 @@ function setupDateSelector() {
   if (savedYear) yearSelect.value = savedYear;
   
   // Обработчики изменений
-  applyBtn.addEventListener('click', () => loadData());
-  monthSelect.addEventListener('change', () => loadData());
-  yearSelect.addEventListener('change', () => loadData());
+  applyBtn.addEventListener('click', () => {
+    showLoading(true);
+    loadData();
+  });
 }
 
 // Загрузка данных
 async function loadData() {
   try {
-    showLoading(true);
-    
     const month = document.getElementById('month-select').value;
     const year = document.getElementById('year-select').value;
     
@@ -261,7 +272,9 @@ function formatNumber(num) {
 function updateHeader(monthYear) {
   const header = document.querySelector('.header h1');
   if (header) {
-    header.textContent = `Новые автомобили - ${monthYear.replace('.', '/')}`;
+    const activeTab = document.querySelector('.tab-btn.active');
+    const tabName = activeTab ? activeTab.textContent.trim() : 'Новые автомобили';
+    header.textContent = `${tabName} - ${monthYear.replace('.', '/')}`;
   }
 }
 
