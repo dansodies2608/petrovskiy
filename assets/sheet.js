@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function initDashboard() {
   setupTabHandlers();
+  setupDateSelector();
   loadData();
   createLoadingIndicator();
 }
@@ -17,17 +18,13 @@ function setupTabHandlers() {
   const tabs = document.querySelectorAll('.tab-btn');
   tabs.forEach(tab => {
     tab.addEventListener('click', function() {
-      // Удаляем активный класс у всех вкладок
       tabs.forEach(t => t.classList.remove('active'));
-      // Добавляем активный класс текущей вкладке
       this.classList.add('active');
       
-      // Скрываем все содержимое вкладок
       document.querySelectorAll('.tab-content').forEach(content => {
         content.classList.remove('active');
       });
       
-      // Показываем соответствующее содержимое
       const tabId = getTabId(this.dataset.count);
       document.getElementById(tabId).classList.add('active');
     });
@@ -44,12 +41,59 @@ function getTabId(count) {
   return tabs[count] || 'new-cars-tab';
 }
 
+// Настройка выбора даты
+function setupDateSelector() {
+  const monthSelect = document.getElementById('month-select');
+  const yearSelect = document.getElementById('year-select');
+  const applyBtn = document.getElementById('apply-date');
+  
+  // Устанавливаем текущий месяц
+  const currentDate = new Date();
+  monthSelect.value = currentDate.getMonth() + 1;
+  
+  // Заполняем годы (последние 5 лет + текущий)
+  const currentYear = currentDate.getFullYear();
+  for (let year = currentYear - 5; year <= currentYear; year++) {
+    const option = document.createElement('option');
+    option.value = year;
+    option.textContent = year;
+    yearSelect.appendChild(option);
+  }
+  yearSelect.value = currentYear;
+  
+  // Сохранение выбора в localStorage
+  const savedMonth = localStorage.getItem('selectedMonth');
+  const savedYear = localStorage.getItem('selectedYear');
+  if (savedMonth) monthSelect.value = savedMonth;
+  if (savedYear) yearSelect.value = savedYear;
+  
+  // Обработчики изменений
+  applyBtn.addEventListener('click', () => loadData());
+  monthSelect.addEventListener('change', () => loadData());
+  yearSelect.addEventListener('change', () => loadData());
+}
+
 // Загрузка данных
 async function loadData() {
   try {
     showLoading(true);
     
-    const response = await fetch(`${SCRIPT_URL}?key=${SECRET_KEY}`);
+    const month = document.getElementById('month-select').value;
+    const year = document.getElementById('year-select').value;
+    
+    // Сохраняем выбор
+    localStorage.setItem('selectedMonth', month);
+    localStorage.setItem('selectedYear', year);
+    
+    // Проверка на будущую дату
+    const currentDate = new Date();
+    if (year > currentDate.getFullYear() || 
+        (year == currentDate.getFullYear() && month > currentDate.getMonth() + 1)) {
+      showError('Нельзя выбрать будущую дату');
+      return;
+    }
+    
+    const response = await fetch(`${SCRIPT_URL}?key=${SECRET_KEY}&month=${month}&year=${year}`);
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     
     const data = await response.json();
@@ -73,11 +117,12 @@ function processAndDisplayData(data) {
   updateHeader(data.currentMonth);
   
   // Обрабатываем данные для всех точек продаж
-  const processedData = processData(data.currentData, data.prevData, data.prevYearData);
+  const processedNewCars = processData(data.newCars.currentData, data.newCars.prevData, data.newCars.prevYearData);
+  const processedUsedCars = processData(data.usedCars.currentData, data.usedCars.prevData, data.usedCars.prevYearData);
   
   // Обновляем UI
-  updateNewCarsTab(processedData);
-  updateUsedCarsTab(processedData);
+  updateNewCarsTab(processedNewCars);
+  updateUsedCarsTab(processedUsedCars);
 }
 
 function processData(currentData, prevData, prevYearData) {
@@ -98,7 +143,7 @@ function processData(currentData, prevData, prevYearData) {
 function processPeriodData(data, point) {
   const filtered = data.filter(item => {
     const salesPoint = item.salesPoint === 'Каширское ш.' ? 'Кашира' : item.salesPoint;
-    return salesPoint === point && (item.category === 'Retail' || item.category === 'Fleet');
+    return salesPoint === point;
   });
   
   const result = {
@@ -170,6 +215,26 @@ function updateCard(pointData, cardIndex) {
   }
 }
 
+// Обновление вкладки "Авто с пробегом"
+function updateUsedCarsTab(data) {
+  const points = ['Софийская', 'Руставели', 'Кашира'];
+  
+  points.forEach((point, index) => {
+    const cardIndex = index + 1;
+    const card = document.querySelector(`#used-cars-tab .card:nth-child(${cardIndex})`);
+    if (!card) return;
+
+    const { current, prevMonth, prevYear } = data[point];
+    
+    // Основные показатели
+    card.querySelector('.stat-row:nth-child(2) span:last-child').textContent = current.total;
+    card.querySelector('.stat-row:nth-child(4) span:last-child').textContent = formatNumber(current.jok);
+    card.querySelector('.stat-row:nth-child(5) span:last-child').textContent = current.total > 0 
+      ? formatNumber(current.jok / current.total) 
+      : '0';
+  });
+}
+
 // Вспомогательные функции
 function calculateGrowth(current, previous) {
   if (previous === 0) return current === 0 ? 0 : Infinity;
@@ -233,10 +298,4 @@ function showError(message) {
   errorDiv.textContent = message;
   document.body.appendChild(errorDiv);
   setTimeout(() => errorDiv.remove(), 5000);
-}
-
-// Обновление других вкладок
-function updateUsedCarsTab(data) {
-  // Аналогичная реализация для авто с пробегом
-  // ...
 }
