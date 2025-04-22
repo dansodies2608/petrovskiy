@@ -80,6 +80,7 @@ body {
 
 .tab-content.active {
     display: block;
+    width: 100%;
 }
 
 .cards-container {
@@ -385,17 +386,13 @@ body {
 
 #apply-date {
   padding: 8px 16px;
-  background-color: #4CAF50;
+  background-color: var(--accent-color);
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
   transition: background-color 0.3s;
-}
-
-#apply-date:hover {
-  background-color: #45a049;
 }
 
 .error-notification {
@@ -447,3 +444,47 @@ body {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* Добавим в конец файла */
+
+/* Стили для сворачиваемой таблицы */
+.toggle-brands {
+    display: inline-block;
+    width: 20px;
+    text-align: center;
+    font-weight: bold;
+  }
+  
+  .brand-row.visible {
+    display: table-row;
+  }
+  
+  /* Стили для карточки чистых активов */
+  .net-assets-card {
+    background-color: #f8f9fa;
+    border-left: 4px solid var(--accent-color);
+  }
+  
+  .net-assets-value {
+    font-size: 24px;
+    font-weight: 600;
+    color: #28a745;
+  }
+  
+  /* Улучшаем отображение таблиц */
+  .sales-dynamics-table .fixed-column {
+    min-width: 150px;
+  }
+  
+  .sales-dynamics-table td, 
+  .sales-dynamics-table th {
+    padding: 8px 12px;
+  }
+  
+  /* Адаптивные стили для карточек */
+  @media (max-width: 768px) {
+   
+    .net-assets-card {
+      grid-column: auto;
+    }
+  }
