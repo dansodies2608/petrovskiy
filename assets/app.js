@@ -1,5 +1,4 @@
-const SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbwsZbfzaUUCQ1fUaEM3_xyBbsgM_MbUVO8MorXsAoXjR0h7haSfG4-PfwIIhhdoIcj3/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyq5MIvbvaOrWwK1wqAxWYPbRbB31aGy4-Ewa2pE1Do36ow4DSmWIr4cf_oJXueUIRvgw/exec";
 const SECRET_KEY = "YOUR_SECRET_KEY";
 
 let dashboardData = null;
@@ -9,11 +8,11 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 function initDashboard() {
-    createLoadingIndicator(); // Сначала создаем
-    showLoading(true);       // Потом показываем
-    setupTabHandlers();
-    setupDateSelector();
-    loadData(true);
+  createLoadingIndicator();
+  showLoading(true);
+  setupTabHandlers();
+  setupDateSelector();
+  loadData(true);
 }
 
 function setupTabHandlers() {
@@ -44,40 +43,38 @@ function getTabId(count) {
     0: "new-cars-tab",
     1: "used-cars-tab",
     2: "service-tab",
-    3: "balance-tab",
+    3: "mkc-tab",
+    4: "balance-tab",
   };
   return tabs[count] || "new-cars-tab";
 }
 
 function setupDateSelector() {
-    const monthSelect = document.getElementById('month-select');
-    const yearSelect = document.getElementById('year-select');
-    const applyBtn = document.getElementById('apply-date');
-    
-    const today = new Date();
-    const currentMonth = today.getMonth() + 1;
-    const currentYear = today.getFullYear();
-    
-    // Устанавливаем текущий месяц и год
-    monthSelect.value = currentMonth;
-    
-    // Очищаем и заполняем список годов
-    yearSelect.innerHTML = '';
-    for (let year = currentYear - 2; year <= currentYear; year++) {
-      const option = document.createElement('option');
-      option.value = year;
-      option.textContent = year;
-      yearSelect.appendChild(option);
-    }
-    
-    // Устанавливаем текущий год как выбранный
-    yearSelect.value = currentYear;
-    
-    applyBtn.addEventListener('click', () => {
-      showLoading(true);
-      loadData(false);
-    });
+  const monthSelect = document.getElementById('month-select');
+  const yearSelect = document.getElementById('year-select');
+  const applyBtn = document.getElementById('apply-date');
+  
+  const today = new Date();
+  const currentMonth = today.getMonth() + 1;
+  const currentYear = today.getFullYear();
+  
+  monthSelect.value = currentMonth;
+  
+  yearSelect.innerHTML = '';
+  for (let year = currentYear - 2; year <= currentYear; year++) {
+    const option = document.createElement('option');
+    option.value = year;
+    option.textContent = year;
+    yearSelect.appendChild(option);
   }
+  
+  yearSelect.value = currentYear;
+  
+  applyBtn.addEventListener('click', () => {
+    showLoading(true);
+    loadData(false);
+  });
+}
 
 async function loadData(isInitialLoad) {
   try {
@@ -87,18 +84,14 @@ async function loadData(isInitialLoad) {
     const year = parseInt(yearSelect.value);
     const today = new Date();
 
-    if (
-      year > today.getFullYear() ||
-      (year === today.getFullYear() && month > today.getMonth() + 1)
-    ) {
+    if (year > today.getFullYear() || (year === today.getFullYear() && month > today.getMonth() + 1)) {
       showError("Нельзя выбрать будущую дату");
       return;
     }
 
     const salesUrl = `${SCRIPT_URL}?key=${SECRET_KEY}&month=${month}&year=${year}&type=sales`;
     const salesResponse = await fetch(salesUrl);
-    if (!salesResponse.ok)
-      throw new Error(`Ошибка HTTP: ${salesResponse.status}`);
+    if (!salesResponse.ok) throw new Error(`Ошибка HTTP: ${salesResponse.status}`);
 
     const salesData = await salesResponse.json();
     if (salesData.status !== "success") throw new Error(salesData.message);
@@ -107,6 +100,10 @@ async function loadData(isInitialLoad) {
     const serviceResponse = await fetch(serviceUrl);
     const serviceData = await serviceResponse.json();
 
+    const mkcUrl = `${SCRIPT_URL}?key=${SECRET_KEY}&month=${month}&year=${year}&type=mkc`;
+    const mkcResponse = await fetch(mkcUrl);
+    const mkcData = await mkcResponse.json();
+
     const balanceUrl = `${SCRIPT_URL}?key=${SECRET_KEY}&type=balance`;
     const balanceResponse = await fetch(balanceUrl);
     const balanceData = await balanceResponse.json();
@@ -114,12 +111,13 @@ async function loadData(isInitialLoad) {
     dashboardData = {
       ...salesData,
       serviceData: serviceData.data,
+      mkcData: mkcData.data,
       balanceData: balanceData.data,
       currentMonth: salesData.currentMonth,
       selectedMonth: salesData.selectedMonth,
       selectedYear: salesData.selectedYear,
     };
-
+    console.log(dashboardData)
     processAndDisplayData(dashboardData);
   } catch (error) {
     console.error("Ошибка загрузки данных:", error);
@@ -137,12 +135,14 @@ function processAndDisplayData(data) {
     const processedNewCars = processSalesData(
       data.newCars.currentData,
       data.newCars.prevData,
-      data.newCars.prevYearData
+      data.newCars.prevYearData,
+      data.newCars.plans
     );
     const processedUsedCars = processSalesData(
       data.usedCars.currentData,
       data.usedCars.prevData,
-      data.usedCars.prevYearData
+      data.usedCars.prevYearData,
+      data.usedCars.plans
     );
 
     updateNewCarsTab(processedNewCars);
@@ -153,38 +153,92 @@ function processAndDisplayData(data) {
     updateServiceTab(data.serviceData);
   }
 
+  if (data.mkcData) {
+    updateMKCTab(data.mkcData);
+  }
+
   if (data.balanceData) {
     updateBalanceTab(data.balanceData);
   }
 }
 
-function processSalesData(currentData, prevData, prevYearData) {
+// Новая функция для обновления вкладки МКЦ
+function updateMKCTab(data) {
+  const container = document.getElementById("mkc-tab");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  for (const point in data) {
+    const pointData = data[point];
+
+    const card = document.createElement("div");
+    card.className = "service-card";
+
+    card.innerHTML = `
+      <h3>${point}</h3>
+      <div class="service-stats">
+        <div class="service-stat">
+          <div class="service-stat-label">Нормо-часы (план/факт)</div>
+          <div class="service-stat-value">${formatNumber(pointData.nh.plan)} / ${formatNumber(pointData.nh.fact)}</div>
+          <div class="service-stat-label">Отклонение</div>
+          <div class="service-stat-value ${getDeviationClass(pointData.nh.deviation)}">
+            ${formatDeviation(pointData.nh.deviation)}
+          </div>
+        </div>
+        <div class="service-stat">
+          <div class="service-stat-label">GM-1 (план/факт)</div>
+          <div class="service-stat-value">${formatNumber(pointData.gm1.plan)} / ${formatNumber(pointData.gm1.fact)}</div>
+          <div class="service-stat-label">Отклонение</div>
+          <div class="service-stat-value ${getDeviationClass(pointData.gm1.deviation)}">
+            ${formatDeviation(pointData.gm1.deviation)}
+          </div>
+        </div>
+      </div>
+    `;
+
+    container.appendChild(card);
+  }
+}
+
+function processSalesData(currentData, prevData, prevYearData, plans) {
   const result = {};
   const allPoints = new Set();
 
   currentData.concat(prevData, prevYearData).forEach((item) => {
     if (item.salesPoint) {
-      allPoints.add(
-        item.salesPoint === "Каширское ш." ? "Кашира" : item.salesPoint
-      );
+      allPoints.add(item.salesPoint === "Каширское ш." ? "Каширка" : item.salesPoint);
     }
   });
 
-  allPoints.forEach((point) => {
+  // Сортируем точки: сначала Питер, потом Москва
+  const sortedPoints = Array.from(allPoints).sort((a, b) => {
+    const isSpbA = isSpbPoint(a);
+    const isSpbB = isSpbPoint(b);
+    if (isSpbA && !isSpbB) return -1;
+    if (!isSpbA && isSpbB) return 1;
+    return a.localeCompare(b);
+  });
+
+  sortedPoints.forEach((point) => {
     result[point] = {
       current: processPeriodData(currentData, point),
       prevMonth: processPeriodData(prevData, point),
       prevYear: processPeriodData(prevYearData, point),
+      plan: plans?.[point] || { total: getDefaultPlan(point, 'new'), jok: 0, brands: {} }
     };
   });
 
   return result;
 }
 
+function isSpbPoint(point) {
+  return ['Софийская', 'Выборгский', 'Руставели'].includes(point);
+}
+
 function processPeriodData(data, point) {
   const filtered = data.filter((item) => {
-    const salesPoint =
-      item.salesPoint === "Каширское ш." ? "Кашира" : item.salesPoint;
+    const salesPoint = item.salesPoint === "Каширское ш." ? "Каширка" : item.salesPoint;
     return salesPoint === point;
   });
 
@@ -231,8 +285,8 @@ function updateUsedCarsTab(data) {
 }
 
 function createSalesCard(point, pointData, type) {
-  const { current, prevMonth, prevYear } = pointData;
-  const plan = type === "new" ? getSalesPlan(point) : getUsedCarPlan(point);
+  const { current, prevMonth, prevYear, plan } = pointData;
+  const isNewCars = type === "new";
 
   const card = document.createElement("div");
   card.className = "card";
@@ -242,7 +296,7 @@ function createSalesCard(point, pointData, type) {
     <div class="stats">
       <div class="stat-row">
         <span class="stat-label">План (шт.):</span>
-        <span>${plan}</span>
+        <span>${plan.total}</span>
       </div>
       <div class="stat-row">
         <span class="stat-label">Факт (шт.):</span>
@@ -250,10 +304,8 @@ function createSalesCard(point, pointData, type) {
       </div>
       <div class="stat-row">
         <span class="stat-label">Откл. (%):</span>
-        <span class="${getDeviationClass(
-          calculateDeviation(current.total, plan)
-        )}">
-          ${formatDeviation(calculateDeviation(current.total, plan))}
+        <span class="${getDeviationClass(calculateDeviation(current.total, plan.total))}">
+          ${formatDeviation(calculateDeviation(current.total, plan.total))}
         </span>
       </div>
       <div class="stat-row">
@@ -280,16 +332,73 @@ function createSalesCard(point, pointData, type) {
             <th>Тек./АППГ</th>
           </tr>
         </thead>
-        <tbody></tbody>
+        <tbody>
+          ${isNewCars ? `
+          <tr class="total-row">
+            <td class="fixed-column">
+              <span class="toggle-brands" style="cursor:pointer;margin-right:8px">+</span>
+              Итого
+            </td>
+            <td>${current.total}</td>
+            <td>${prevMonth.total || 0}</td>
+            <td>${prevYear.total > 0 ? prevYear.total : "N/A"}</td>
+            <td class="${getGrowthClass(calculateGrowth(current.total, prevMonth.total))}">
+              ${formatGrowth(calculateGrowth(current.total, prevMonth.total))}
+            </td>
+            <td class="${getGrowthClass(calculateGrowth(current.total, prevYear.total))}">
+              ${prevYear.total > 0 ? formatGrowth(calculateGrowth(current.total, prevYear.total)) : "N/A"}
+            </td>
+          </tr>
+          ` : ''}
+        </tbody>
       </table>
     </div>
   `;
 
-  updateSalesTable(card, current, prevMonth, prevYear);
+  if (isNewCars) {
+    const toggleBtn = card.querySelector('.toggle-brands');
+    toggleBtn.addEventListener('click', function() {
+      const tableBody = card.querySelector('.sales-dynamics-table tbody');
+      const isExpanded = tableBody.querySelector('.brand-row');
+      
+      if (isExpanded) {
+        tableBody.querySelectorAll('.brand-row').forEach(row => row.remove());
+        toggleBtn.textContent = '+';
+      } else {
+        // Добавляем бренды из плана
+        for (const brand in plan.brands) {
+          const planBrand = plan.brands[brand];
+          const currentBrand = current.brands[brand] || { count: 0 };
+          const prevBrand = prevMonth.brands[brand] || { count: 0 };
+          const prevYearBrand = prevYear.brands[brand] || { count: 0 };
+
+          const row = document.createElement('tr');
+          row.className = 'brand-row';
+          row.innerHTML = `
+            <td class="fixed-column" style="padding-left: 30px;">${brand}</td>
+            <td>${currentBrand.count}</td>
+            <td>${prevBrand.count || 0}</td>
+            <td>${prevYearBrand.count > 0 ? prevYearBrand.count : "N/A"}</td>
+            <td class="${getGrowthClass(calculateGrowth(currentBrand.count, prevBrand.count))}">
+              ${formatGrowth(calculateGrowth(currentBrand.count, prevBrand.count))}
+            </td>
+            <td class="${getGrowthClass(calculateGrowth(currentBrand.count, prevYearBrand.count))}">
+              ${prevYearBrand.count > 0 ? formatGrowth(calculateGrowth(currentBrand.count, prevYearBrand.count)) : "N/A"}
+            </td>
+          `;
+          tableBody.appendChild(row);
+        }
+        toggleBtn.textContent = '-';
+      }
+    });
+  } else {
+    updateUsedCarsTable(card, current, prevMonth, prevYear);
+  }
+
   return card;
 }
 
-function updateSalesTable(card, current, prevMonth, prevYear) {
+function updateUsedCarsTable(card, current, prevMonth, prevYear) {
   const tableBody = card.querySelector(".sales-dynamics-table tbody");
   if (!tableBody) return;
 
@@ -304,9 +413,7 @@ function updateSalesTable(card, current, prevMonth, prevYear) {
     <td>${current.total}</td>
     <td>${prevMonth.total || 0}</td>
     <td>${prevYear.total > 0 ? prevYear.total : "N/A"}</td>
-    <td class="${getGrowthClass(growthMonthTotal)}">${formatGrowth(
-    growthMonthTotal
-  )}</td>
+    <td class="${getGrowthClass(growthMonthTotal)}">${formatGrowth(growthMonthTotal)}</td>
     <td class="${getGrowthClass(growthYearTotal)}">
       ${prevYear.total > 0 ? formatGrowth(growthYearTotal) : "N/A"}
     </td>
@@ -314,6 +421,8 @@ function updateSalesTable(card, current, prevMonth, prevYear) {
   tableBody.appendChild(totalRow);
 
   for (const brand in current.brands) {
+    if (brand === "Другие") continue;
+    
     const currentBrand = current.brands[brand];
     const prevBrand = prevMonth.brands[brand] || { count: 0 };
     const prevYearBrand = prevYear.brands[brand] || { count: 0 };
@@ -327,9 +436,7 @@ function updateSalesTable(card, current, prevMonth, prevYear) {
       <td>${currentBrand.count}</td>
       <td>${prevBrand.count || 0}</td>
       <td>${prevYearBrand.count > 0 ? prevYearBrand.count : "N/A"}</td>
-      <td class="${getGrowthClass(growthMonth)}">${formatGrowth(
-      growthMonth
-    )}</td>
+      <td class="${getGrowthClass(growthMonth)}">${formatGrowth(growthMonth)}</td>
       <td class="${getGrowthClass(growthYear)}">
         ${prevYear.total > 0 ? formatGrowth(growthYear) : "N/A"}
       </td>
@@ -355,25 +462,17 @@ function updateServiceTab(data) {
       <div class="service-stats">
         <div class="service-stat">
           <div class="service-stat-label">Нормо-часы (план/факт)</div>
-          <div class="service-stat-value">${formatNumber(
-            pointData.nh.plan
-          )} / ${formatNumber(pointData.nh.fact)}</div>
+          <div class="service-stat-value">${formatNumber(pointData.nh.plan)} / ${formatNumber(pointData.nh.fact)}</div>
           <div class="service-stat-label">Отклонение</div>
-          <div class="service-stat-value ${getDeviationClass(
-            pointData.nh.deviation
-          )}">
+          <div class="service-stat-value ${getDeviationClass(pointData.nh.deviation)}">
             ${formatDeviation(pointData.nh.deviation)}
           </div>
         </div>
         <div class="service-stat">
           <div class="service-stat-label">GM-1 (план/факт)</div>
-          <div class="service-stat-value">${formatNumber(
-            pointData.gm1.plan
-          )} / ${formatNumber(pointData.gm1.fact)}</div>
+          <div class="service-stat-value">${formatNumber(pointData.gm1.plan)} / ${formatNumber(pointData.gm1.fact)}</div>
           <div class="service-stat-label">Отклонение</div>
-          <div class="service-stat-value ${getDeviationClass(
-            pointData.gm1.deviation
-          )}">
+          <div class="service-stat-value ${getDeviationClass(pointData.gm1.deviation)}">
             ${formatDeviation(pointData.gm1.deviation)}
           </div>
         </div>
@@ -438,9 +537,7 @@ function updateBalanceTab(data) {
     <div class="stats">
       <div class="stat-row">
         <span class="stat-label">Кредитные линии:</span>
-        <span>${formatNumber(
-          data.liabilities.vtb + data.liabilities.rnBank
-        )} руб.</span>
+        <span>${formatNumber(data.liabilities.vtb + data.liabilities.rnBank)} руб.</span>
       </div>
       <div class="stat-row">
         <span class="stat-label">Факторинг:</span>
@@ -454,23 +551,31 @@ function updateBalanceTab(data) {
         <span class="stat-label">Итого пассивы:</span>
         <span>${formatNumber(data.liabilities.total)} руб.</span>
       </div>
-      <div class="stat-row" style="margin-top: 20px; font-weight: 600;">
-        <span class="stat-label">Операционные чистые активы:</span>
-        <span>${formatNumber(data.netAssets)} руб.</span>
-      </div>
     </div>
   `;
   cardsContainer.appendChild(liabilitiesCard);
 
-  // const updateInfo = document.createElement("div");
-  // updateInfo.className = "update-info";
-  // updateInfo.style.marginTop = "20px";
-  // updateInfo.style.fontSize = "14px";
-  // updateInfo.style.color = "#666";
-  // updateInfo.textContent = `Данные обновлены: ${
-  //   data.lastUpdated || "неизвестно"
-  // }`;
-  // container.appendChild(updateInfo);
+  const netAssetsCard = document.createElement("div");
+  netAssetsCard.className = "card net-assets-card";
+  netAssetsCard.style.gridColumn = "1 / -1";
+  netAssetsCard.innerHTML = `
+    <h2>Оперативные чистые активы</h2>
+    <div class="stats" style="font-size: 18px;">
+      <div class="stat-row" style="margin-top: 15px; font-weight: 600;">
+        <span class="stat-label">Оперативные чистые активы (Активы - Пассивы):</span>
+        <span class="net-assets-value">${formatNumber(data.netAssets)} руб.</span>
+      </div>
+    </div>
+  `;
+  cardsContainer.appendChild(netAssetsCard);
+
+  const updateInfo = document.createElement("div");
+  updateInfo.className = "update-info";
+  updateInfo.style.marginTop = "20px";
+  updateInfo.style.fontSize = "14px";
+  updateInfo.style.color = "#666";
+  updateInfo.textContent = `Данные обновлены: ${data.lastUpdated || "неизвестно"}`;
+  container.appendChild(updateInfo);
 }
 
 function updateHeader() {
@@ -491,39 +596,43 @@ function refreshTabData(tabId) {
     const processedData = processSalesData(
       dashboardData.newCars.currentData,
       dashboardData.newCars.prevData,
-      dashboardData.newCars.prevYearData
+      dashboardData.newCars.prevYearData,
+      dashboardData.newCars.plans
     );
     updateNewCarsTab(processedData);
   } else if (tabId === "used-cars-tab") {
     const processedData = processSalesData(
       dashboardData.usedCars.currentData,
       dashboardData.usedCars.prevData,
-      dashboardData.usedCars.prevYearData
+      dashboardData.usedCars.prevYearData,
+      dashboardData.usedCars.plans
     );
     updateUsedCarsTab(processedData);
   } else if (tabId === "service-tab") {
     updateServiceTab(dashboardData.serviceData);
+  } else if (tabId === "mkc-tab") {
+    updateMKCTab(dashboardData.mkcData);
   } else if (tabId === "balance-tab") {
     updateBalanceTab(dashboardData.balanceData);
   }
 }
 
-function getSalesPlan(point) {
-  const plans = {
-    Софийская: 120,
-    Руставели: 30,
-    Кашира: 3,
+function getDefaultPlan(point, type) {
+  const newCarPlans = {
+    'Софийская': 120,
+    'Руставели': 30,
+    'Каширка': 3
   };
-  return plans[point] || 0;
-}
-
-function getUsedCarPlan(point) {
-  const plans = {
-    Софийская: 60,
-    Руставели: 15,
-    Кашира: 2,
+  
+  const usedCarPlans = {
+    'Софийская': 60,
+    'Руставели': 15,
+    'Каширка': 2
   };
-  return plans[point] || 0;
+  
+  return type === 'new' 
+    ? (newCarPlans[point] || 0)
+    : (usedCarPlans[point] || 0);
 }
 
 function createLoadingIndicator() {
