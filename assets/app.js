@@ -575,7 +575,7 @@ function updateBalanceTab(data) {
   updateInfo.style.fontSize = "14px";
   updateInfo.style.color = "#666";
   updateInfo.textContent = `Данные обновлены: ${data.lastUpdated || "неизвестно"}`;
-  container.appendChild(updateInfo);
+  // container.appendChild(updateInfo);
 }
 
 function updateHeader() {
