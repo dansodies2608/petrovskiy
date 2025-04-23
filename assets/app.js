@@ -112,12 +112,13 @@ async function loadData(isInitialLoad) {
       ...salesData,
       serviceData: serviceData.data,
       mkcData: mkcData.data,
-      balanceData: balanceData.data,
+      balanceData: balanceData.data || balanceData,
       currentMonth: salesData.currentMonth,
       selectedMonth: salesData.selectedMonth,
       selectedYear: salesData.selectedYear,
     };
-    console.log(dashboardData)
+    console.log(dashboardData);
+
     processAndDisplayData(dashboardData);
   } catch (error) {
     console.error("Ошибка загрузки данных:", error);
@@ -485,9 +486,20 @@ function updateServiceTab(data) {
 
 function updateBalanceTab(data) {
   const container = document.getElementById("balance-tab");
-  if (!container) return;
+  if (!container || !data) {
+    container.innerHTML = "<div class='error-notification'>Данные баланса недоступны</div>";
+    return;
+  }
 
   container.innerHTML = "";
+
+  // Проверяем структуру данных
+  const balanceData = data.data || data;
+  
+  if (!balanceData.assets || !balanceData.liabilities) {
+    container.innerHTML = "<div class='error-notification'>Неверный формат данных баланса</div>";
+    return;
+  }
 
   const cardsContainer = document.createElement("div");
   cardsContainer.className = "cards-container";
@@ -557,7 +569,6 @@ function updateBalanceTab(data) {
 
   const netAssetsCard = document.createElement("div");
   netAssetsCard.className = "card net-assets-card";
-  netAssetsCard.style.gridColumn = "1 / -1";
   netAssetsCard.innerHTML = `
     <h2>Оперативные чистые активы</h2>
     <div class="stats" style="font-size: 18px;">
@@ -568,6 +579,7 @@ function updateBalanceTab(data) {
     </div>
   `;
   cardsContainer.appendChild(netAssetsCard);
+
 }
 
 function updateHeader() {
