@@ -466,7 +466,7 @@ body {
   }
   
   .net-assets-value {
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 600;
     color: #28a745;
   }
@@ -487,4 +487,15 @@ body {
     .net-assets-card {
       grid-column: auto;
     }
+  }
+  .toggle-brands {
+    background: none;
+    border: none;
+    font-size: inherit;
+    padding: 0;
+    cursor: pointer;
+  }
+  
+  .toggle-brands:focus {
+    outline: none;
   }
