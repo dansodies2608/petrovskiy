@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyq5MIvbvaOrWwK1wqAxWYPbRbB31aGy4-Ewa2pE1Do36ow4DSmWIr4cf_oJXueUIRvgw/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmiq2x3zkNetsY9DPJym3tVSPkuC4YY8lWa7w270PILhW4XgaaLAjAb0AkHk-pr2GbVw/exec";
 const SECRET_KEY = "YOUR_SECRET_KEY";
 
 let dashboardData = null;
@@ -163,7 +163,6 @@ function processAndDisplayData(data) {
   }
 }
 
-// Новая функция для обновления вкладки МКЦ
 function updateMKCTab(data) {
   const container = document.getElementById("mkc-tab");
   if (!container) return;
@@ -206,6 +205,15 @@ function processSalesData(currentData, prevData, prevYearData, plans) {
   const result = {};
   const allPoints = new Set();
 
+  // Собираем все точки продаж
+  [currentData, prevData, prevYearData].forEach(data => {
+    data.forEach(item => {
+      if (item && item.salesPoint) {
+        allPoints.add(item.salesPoint === "Каширское ш." ? "Каширка" : item.salesPoint);
+      }
+    });
+  });
+
   currentData.concat(prevData, prevYearData).forEach((item) => {
     if (item.salesPoint) {
       allPoints.add(item.salesPoint === "Каширское ш." ? "Каширка" : item.salesPoint);
@@ -240,7 +248,7 @@ function isSpbPoint(point) {
 function processPeriodData(data, point) {
   const filtered = data.filter((item) => {
     const salesPoint = item.salesPoint === "Каширское ш." ? "Каширка" : item.salesPoint;
-    return salesPoint === point;
+    return salesPoint === point && (item.soldCount || item.jok); // Учитываем записи с soldCount или jok
   });
 
   const result = {
@@ -251,11 +259,14 @@ function processPeriodData(data, point) {
 
   filtered.forEach((item) => {
     const brand = item.brand || "Другие";
+    const soldCount = item.soldCount || 0; // Теперь всегда 1
+    const jok = item.jok || 0;
+    
     result.brands[brand] = result.brands[brand] || { count: 0, jok: 0 };
-    result.brands[brand].count += item.soldCount || 0;
-    result.brands[brand].jok += item.jok || 0;
-    result.total += item.soldCount || 0;
-    result.jok += item.jok || 0;
+    result.brands[brand].count += soldCount; // Увеличиваем на 1
+    result.brands[brand].jok += jok;
+    result.total += soldCount; // Суммируем общее количество
+    result.jok += jok;
   });
 
   return result;
@@ -652,7 +663,7 @@ function createLoadingIndicator() {
     display: none;
     justify-content: center;
     align-items: center;
-    z-index: 1000;
+    z-index: 1000000;
     color: white;
     font-size: 24px;
   `;
