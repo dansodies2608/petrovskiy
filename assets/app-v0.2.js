@@ -132,35 +132,60 @@ function processAndDisplayData(data) {
   dashboardData = data;
   updateHeader();
 
-  if (data.newCars && data.usedCars) {
+  // Обработка новых автомобилей
+  if (data.newCars) {
     const processedNewCars = processSalesData(
       data.newCars.currentData,
       data.newCars.prevData,
       data.newCars.prevYearData,
       data.newCars.plans
     );
+    updateNewCarsTab(processedNewCars);
+  }
+
+  // Обработка авто с пробегом
+  if (data.usedCars) {
     const processedUsedCars = processSalesData(
       data.usedCars.currentData,
       data.usedCars.prevData,
       data.usedCars.prevYearData,
       data.usedCars.plans
     );
+    
+    // Агрегируем общие данные по ASP
+    let aggregatedASPData = {
+      'Выкуп': { plan: 0, fact: 0, sum: 0 },
+      'Trade-In': { plan: 0, fact: 0, sum: 0 },
+      'Внутренний Trade-In': { plan: 0, fact: 0, sum: 0 },
+      'Комиссия': { plan: 0, fact: 0, sum: 0 }
+    };
 
-    updateNewCarsTab(processedNewCars);
+    // Добавляем ASP данные и агрегируем общие показатели
+    if (data.usedCars.aspData) {
+      for (const point in data.usedCars.aspData) {
+        const pointData = data.usedCars.aspData[point];
+        processedUsedCars[point].aspData = pointData;
+        
+        // Агрегация общих данных
+        for (const type in pointData) {
+          if (aggregatedASPData[type]) {
+            aggregatedASPData[type].plan += pointData[type].plan || 0;
+            aggregatedASPData[type].fact += pointData[type].fact || 0;
+            aggregatedASPData[type].sum += pointData[type].sum || 0;
+          }
+        }
+      }
+    }
+    
+    // Добавляем агрегированные данные в объект
+    processedUsedCars.aggregatedASPData = aggregatedASPData;
+    
     updateUsedCarsTab(processedUsedCars);
   }
 
-  if (data.serviceData) {
-    updateServiceTab(data.serviceData);
-  }
-
-  if (data.mkcData) {
-    updateMKCTab(data.mkcData);
-  }
-
-  if (data.balanceData) {
-    updateBalanceTab(data.balanceData);
-  }
+  if (data.serviceData) updateServiceTab(data.serviceData);
+  if (data.mkcData) updateMKCTab(data.mkcData);
+  if (data.balanceData) updateBalanceTab(data.balanceData);
 }
 
 function updateMKCTab(data) {
@@ -290,14 +315,72 @@ function updateUsedCarsTab(data) {
 
   container.innerHTML = "";
 
+  // 1. Добавляем общую сводку по ASP
+  if (data.aggregatedASPData) {
+    const summaryCard = document.createElement("div");
+    summaryCard.className = "card asp-summary-card";
+    summaryCard.innerHTML = `
+      <h2>Общие данные по приему авто</h2>
+      <div class="asp-summary-container"></div>
+    `;
+    
+    const summaryContainer = summaryCard.querySelector(".asp-summary-container");
+    
+    const dealTypes = ['Выкуп', 'Trade-In', 'Внутренний Trade-In', 'Комиссия'];
+    
+    dealTypes.forEach(type => {
+      if (data.aggregatedASPData[type]) {
+        const typeData = data.aggregatedASPData[type];
+        const deviation = typeData.plan ? ((typeData.fact - typeData.plan) / typeData.plan) * 100 : 0;
+        const avgPrice = typeData.fact ? typeData.sum / typeData.fact : 0;
+        
+        const statElement = document.createElement("div");
+        statElement.className = "asp-summary-stat";
+        statElement.innerHTML = `
+          <h3>${type}</h3>
+          <div class="asp-summary-grid">
+            <div class="asp-summary-item">
+              <span class="asp-summary-label">План</span>
+              <span class="asp-summary-value">${formatNumber(typeData.plan)} шт</span>
+            </div>
+            <div class="asp-summary-item">
+              <span class="asp-summary-label">Факт</span>
+              <span class="asp-summary-value">${formatNumber(typeData.fact)} шт</span>
+            </div>
+            <div class="asp-summary-item">
+              <span class="asp-summary-label">Отклонение</span>
+              <span class="asp-summary-value ${getDeviationClass(deviation)}">
+                ${formatDeviation(deviation)}
+              </span>
+            </div>
+            <div class="asp-summary-item">
+              <span class="asp-summary-label">Сумма</span>
+              <span class="asp-summary-value">${formatNumber(typeData.sum)} ₽</span>
+            </div>
+            <div class="asp-summary-item">
+              <span class="asp-summary-label">Средняя цена</span>
+              <span class="asp-summary-value">${formatNumber(avgPrice)} ₽</span>
+            </div>
+          </div>
+        `;
+        summaryContainer.appendChild(statElement);
+      }
+    });
+    
+    container.appendChild(summaryCard);
+  }
+
+  // 2. Добавляем карточки по точкам продаж
   for (const point in data) {
-    const card = createSalesCard(point, data[point], "used");
-    container.appendChild(card);
+    if (point !== 'aggregatedASPData' && data[point]) {
+      const card = createSalesCard(point, data[point], "used");
+      container.appendChild(card);
+    }
   }
 }
 
 function createSalesCard(point, pointData, type) {
-  const { current, prevMonth, prevYear, plan } = pointData;
+  const { current, prevMonth, prevYear, plan, aspData } = pointData;
   const isNewCars = type === "new";
 
   const card = document.createElement("div");
@@ -305,182 +388,290 @@ function createSalesCard(point, pointData, type) {
 
   card.innerHTML = `
     <h2>${point}</h2>
-    <div class="stats">
-      <div class="stat-row">
-        <span class="stat-label">План (шт.):</span>
-        <span>${plan.total}</span>
+    <div class="stats-grid">
+      <div class="stat-item">
+        <span class="stat-label">План</span>
+        <span class="stat-value">${plan.total} шт</span>
       </div>
-      <div class="stat-row">
-        <span class="stat-label">Факт (шт.):</span>
-        <span>${current.total}</span>
+      <div class="stat-item">
+        <span class="stat-label">Факт</span>
+        <span class="stat-value">${current.total} шт</span>
       </div>
-      <div class="stat-row">
-        <span class="stat-label">Откл. (%):</span>
-        <span class="${getDeviationClass(calculateDeviation(current.total, plan.total))}">
+      <div class="stat-item">
+        <span class="stat-label">Откл.</span>
+        <span class="stat-value ${getDeviationClass(calculateDeviation(current.total, plan.total))}">
           ${formatDeviation(calculateDeviation(current.total, plan.total))}
         </span>
       </div>
-      <div class="stat-row">
-        <span class="stat-label">ЖОК (руб.):</span>
-        <span>${formatNumber(current.jok)}</span>
+      <div class="stat-item">
+        <span class="stat-label">ЖОК</span>
+        <span class="stat-value">${formatNumber(current.jok)} ₽</span>
       </div>
-      <div class="stat-row">
-        <span class="stat-label">ЖОК / ед.:</span>
-        <span>${
-          current.total > 0 ? formatNumber(current.jok / current.total) : "0.00"
-        }</span>
+      <div class="stat-item">
+        <span class="stat-label">ЖОК/ед</span>
+        <span class="stat-value">${current.total > 0 ? formatNumber(current.jok / current.total) : "0"} ₽</span>
       </div>
     </div>
-    <h2 style="margin-top: 30px;">Динамика продаж</h2>
-    <div class="scrollable-table">
-      <table class="sales-dynamics-table">
-        <thead>
-          <tr>
-            <th class="fixed-column"></th>
-            <th>Тек.мес.</th>
-            <th>Пр.мес.</th>
-            <th>АППГ</th>
-            <th>Тек./Пр.</th>
-            <th>Тек./АППГ</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${isNewCars ? `
-          <tr class="total-row">
-            <td class="fixed-column">
-              <span class="toggle-brands" style="cursor:pointer;margin-right:8px">+</span>
-              Итого
-            </td>
-            <td>${current.total}</td>
-            <td>${prevMonth.total || 0}</td>
-            <td>${prevYear.total > 0 ? prevYear.total : "N/A"}</td>
-            <td class="${getGrowthClass(calculateGrowth(current.total, prevMonth.total))}">
-              ${formatGrowth(calculateGrowth(current.total, prevMonth.total))}
-            </td>
-            <td class="${getGrowthClass(calculateGrowth(current.total, prevYear.total))}">
-              ${prevYear.total > 0 ? formatGrowth(calculateGrowth(current.total, prevYear.total)) : "N/A"}
-            </td>
-          </tr>
-          ` : ''}
-        </tbody>
-      </table>
+
+    <div class="sales-dynamics">
+      <h3 class="dynamics-header">
+        <span>Динамика продаж</span>
+        ${isNewCars ? '<button class="toggle-brands">+</button>' : ''}
+      </h3>
+      
+      <div class="dynamics-overview">
+        <div class="period-column">
+          <div class="period-header">Период</div>
+          <div class="period-value">Текущий</div>
+          <div class="period-value">Предыдущий</div>
+          <div class="period-value">АППГ</div>
+        </div>
+        <div class="data-column">
+          <div class="brand-header">Итого</div>
+          <div class="brand-value">${current.total}</div>
+          <div class="brand-value">${prevMonth.total || 0}</div>
+          <div class="brand-value">${prevYear.total > 0 ? prevYear.total : "N/A"}</div>
+        </div>
+        <div class="growth-column">
+          <div class="growth-header">Рост</div>
+          <div class="growth-value ${getGrowthClass(calculateGrowth(current.total, prevMonth.total))}">
+            ${formatGrowth(calculateGrowth(current.total, prevMonth.total))}
+          </div>
+          <div class="growth-value ${getGrowthClass(calculateGrowth(current.total, prevYear.total))}">
+            ${prevYear.total > 0 ? formatGrowth(calculateGrowth(current.total, prevYear.total)) : "N/A"}
+          </div>
+        </div>
+      </div>
+      
+      <div class="brands-container"></div>
     </div>
   `;
 
-  if (isNewCars) {
-    const toggleBtn = card.querySelector('.toggle-brands');
-    toggleBtn.addEventListener('click', function() {
-        const tableBody = card.querySelector('.sales-dynamics-table tbody');
-        const isExpanded = tableBody.querySelector('.brand-row');
+  // Добавляем данные о приеме для текущей точки
+  if (!isNewCars && aspData) {
+    const aspSection = document.createElement("div");
+    aspSection.className = "asp-point-section";
+    aspSection.innerHTML = `
+      <h3 class="asp-point-header">Прием автомобилей</h3>
+      <div class="asp-point-stats"></div>
+    `;
+    
+    const statsContainer = aspSection.querySelector(".asp-point-stats");
+    
+    const dealTypes = ['Выкуп', 'Trade-In', 'Внутренний Trade-In', 'Комиссия'];
+    
+    dealTypes.forEach(type => {
+      if (aspData[type]) {
+        const typeData = aspData[type];
+        const avgPrice = typeData.fact ? typeData.sum / typeData.fact : 0;
         
-        if (isExpanded) {
-            tableBody.querySelectorAll('.brand-row').forEach(row => row.remove());
-            toggleBtn.textContent = '+';
-        } else {
-            // Собираем все уникальные бренды из всех периодов
-            const allBrands = new Set();
-            
-            // Добавляем бренды из текущего периода
-            for (const brand in current.brands) {
-                allBrands.add(brand);
-            }
-            
-            // Добавляем бренды из предыдущего месяца
-            for (const brand in prevMonth.brands) {
-                allBrands.add(brand);
-            }
-            
-            // Добавляем бренды из прошлого года
-            for (const brand in prevYear.brands) {
-                allBrands.add(brand);
-            }
-            
-            // Добавляем бренды из плана
-            for (const brand in plan.brands) {
-                allBrands.add(brand);
-            }
-            
-            // Сортируем бренды по алфавиту
-            const sortedBrands = Array.from(allBrands).sort();
-            
-            // Создаем строки для каждого бренда
-            sortedBrands.forEach(brand => {
-                const currentBrand = current.brands[brand] || { count: 0 };
-                const prevBrand = prevMonth.brands[brand] || { count: 0 };
-                const prevYearBrand = prevYear.brands[brand] || { count: 0 };
-
-                const row = document.createElement('tr');
-                row.className = 'brand-row';
-                row.innerHTML = `
-                    <td class="fixed-column" style="padding-left: 30px;">${brand}</td>
-                    <td>${currentBrand.count}</td>
-                    <td>${prevBrand.count || 0}</td>
-                    <td>${prevYearBrand.count > 0 ? prevYearBrand.count : "N/A"}</td>
-                    <td class="${getGrowthClass(calculateGrowth(currentBrand.count, prevBrand.count))}">
-                        ${formatGrowth(calculateGrowth(currentBrand.count, prevBrand.count))}
-                    </td>
-                    <td class="${getGrowthClass(calculateGrowth(currentBrand.count, prevYearBrand.count))}">
-                        ${prevYearBrand.count > 0 ? formatGrowth(calculateGrowth(currentBrand.count, prevYearBrand.count)) : "N/A"}
-                    </td>
-                `;
-                tableBody.appendChild(row);
-            });
-            toggleBtn.textContent = '-';
-        }
+        const statElement = document.createElement("div");
+        statElement.className = "asp-point-stat";
+        statElement.innerHTML = `
+          <div class="asp-point-type">${type}</div>
+          <div class="asp-point-grid">
+            <div class="asp-point-item">
+              <span class="asp-point-label">Факт</span>
+              <span class="asp-point-value">${typeData.fact} шт</span>
+            </div>
+            <div class="asp-point-item">
+              <span class="asp-point-label">Сумма</span>
+              <span class="asp-point-value">${formatNumber(typeData.sum)} ₽</span>
+            </div>
+            <div class="asp-point-item">
+              <span class="asp-point-label">Средняя</span>
+              <span class="asp-point-value">${formatNumber(avgPrice)} ₽</span>
+            </div>
+          </div>
+        `;
+        statsContainer.appendChild(statElement);
+      }
     });
-} else {
-    updateUsedCarsTable(card, current, prevMonth, prevYear);
+    
+    card.appendChild(aspSection);
+  }
+
+  const toggleBtn = card.querySelector('.toggle-brands');
+  const brandsContainer = card.querySelector('.brands-container');
+
+  if (isNewCars && toggleBtn) {
+    toggleBtn.addEventListener('click', function() {
+      const isExpanded = brandsContainer.classList.contains('expanded');
+      
+      if (isExpanded) {
+        brandsContainer.classList.remove('expanded');
+        toggleBtn.textContent = '+';
+      } else {
+        const allBrands = getAllBrands(current, prevMonth, prevYear, plan);
+        
+        brandsContainer.innerHTML = '';
+        allBrands.forEach(brand => {
+          const brandRow = createBrandRow(brand, current, prevMonth, prevYear);
+          brandsContainer.appendChild(brandRow);
+        });
+        
+        brandsContainer.classList.add('expanded');
+        toggleBtn.textContent = '-';
+      }
+    });
   }
 
   return card;
 }
 
-function updateUsedCarsTable(card, current, prevMonth, prevYear) {
-  const tableBody = card.querySelector(".sales-dynamics-table tbody");
-  if (!tableBody) return;
-
-  tableBody.innerHTML = "";
-
-  const growthMonthTotal = calculateGrowth(current.total, prevMonth.total);
-  const growthYearTotal = calculateGrowth(current.total, prevYear.total);
-
-  const totalRow = document.createElement("tr");
-  totalRow.innerHTML = `
-    <td class="fixed-column">Итого</td>
-    <td>${current.total}</td>
-    <td>${prevMonth.total || 0}</td>
-    <td>${prevYear.total > 0 ? prevYear.total : "N/A"}</td>
-    <td class="${getGrowthClass(growthMonthTotal)}">${formatGrowth(growthMonthTotal)}</td>
-    <td class="${getGrowthClass(growthYearTotal)}">
-      ${prevYear.total > 0 ? formatGrowth(growthYearTotal) : "N/A"}
-    </td>
-  `;
-  tableBody.appendChild(totalRow);
-
-  for (const brand in current.brands) {
-    if (brand === "Другие") continue;
-    
-    const currentBrand = current.brands[brand];
-    const prevBrand = prevMonth.brands[brand] || { count: 0 };
-    const prevYearBrand = prevYear.brands[brand] || { count: 0 };
-
-    const growthMonth = calculateGrowth(currentBrand.count, prevBrand.count);
-    const growthYear = calculateGrowth(currentBrand.count, prevYearBrand.count);
-
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td class="fixed-column">${brand}</td>
-      <td>${currentBrand.count}</td>
-      <td>${prevBrand.count || 0}</td>
-      <td>${prevYearBrand.count > 0 ? prevYearBrand.count : "N/A"}</td>
-      <td class="${getGrowthClass(growthMonth)}">${formatGrowth(growthMonth)}</td>
-      <td class="${getGrowthClass(growthYear)}">
-        ${prevYear.total > 0 ? formatGrowth(growthYear) : "N/A"}
-      </td>
-    `;
-    tableBody.appendChild(row);
-  }
+// Вспомогательные функции
+function getAllBrands(current, prevMonth, prevYear, plan) {
+  const allBrands = new Set();
+  
+  [current.brands, prevMonth.brands, prevYear.brands, plan.brands].forEach(data => {
+    for (const brand in data) {
+      allBrands.add(brand);
+    }
+  });
+  
+  return Array.from(allBrands).sort();
 }
+
+function createBrandRow(brand, current, prevMonth, prevYear) {
+  const currentBrand = current.brands[brand] || { count: 0 };
+  const prevBrand = prevMonth.brands[brand] || { count: 0 };
+  const prevYearBrand = prevYear.brands[brand] || { count: 0 };
+
+  const row = document.createElement('div');
+  row.className = 'brand-row';
+  
+  row.innerHTML = `
+    <h3 class="dynamics-header">
+      <span>${brand}</span>
+    </h3>
+    
+    <div class="dynamics-overview brend">
+      <div class="period-column">
+        <div class="period-header">Период</div>
+        <div class="period-value">Текущий</div>
+        <div class="period-value">Предыдущий</div>
+        <div class="period-value">АППГ</div>
+      </div>
+      <div class="data-column">
+        <div class="brand-header">Итого</div>
+        <div class="brand-value">${currentBrand.count}</div>
+        <div class="brand-value">${prevBrand.count || 0}</div>
+        <div class="brand-value">${prevYearBrand.count > 0 ? prevYearBrand.count : "N/A"}</div>
+      </div>
+      <div class="growth-column">
+        <div class="growth-header">Рост</div>
+        <div class="growth-value ${getGrowthClass(calculateGrowth(currentBrand.count, prevBrand.count))}">
+        ${formatGrowth(calculateGrowth(currentBrand.count, prevBrand.count))}
+        </div>
+        <div class="growth-value ${getGrowthClass(calculateGrowth(currentBrand.count, prevYearBrand.count))}">
+        ${prevYearBrand.count > 0 ? formatGrowth(calculateGrowth(currentBrand.count, prevYearBrand.count)) : "N/A"}
+        </div>
+      </div>
+    </div>
+  `;
+  
+  return row;
+}
+
+// Новая функция для создания карточки приема АСП
+function createASPCard(point, aspData) {
+  const card = document.createElement("div");
+  card.className = "card asp-card";
+  card.innerHTML = `
+    <h2>Прием АСП - ${point}</h2>
+    <div class="asp-stats-container"></div>
+  `;
+  
+  const statsContainer = card.querySelector(".asp-stats-container");
+  
+  // Типы сделок в нужном порядке
+  const dealTypes = ['Выкуп', 'Trade-In', 'Внутренний Trade-In', 'Комиссия'];
+  
+  dealTypes.forEach(type => {
+    if (aspData[type]) {
+      const typeData = aspData[type];
+      const statElement = document.createElement("div");
+      statElement.className = "asp-stat";
+      statElement.innerHTML = `
+        <h3>${type}</h3>
+        <div class="asp-stat-grid">
+          <div class="asp-stat-item">
+            <span class="asp-stat-label">План</span>
+            <span class="asp-stat-value">${typeData.plan} шт</span>
+          </div>
+          <div class="asp-stat-item">
+            <span class="asp-stat-label">Факт</span>
+            <span class="asp-stat-value">${typeData.fact} шт</span>
+          </div>
+          <div class="asp-stat-item">
+            <span class="asp-stat-label">Отклонение</span>
+            <span class="asp-stat-value ${getDeviationClass(typeData.deviation)}">
+              ${formatDeviation(typeData.deviation)}
+            </span>
+          </div>
+          <div class="asp-stat-item">
+            <span class="asp-stat-label">Сумма</span>
+            <span class="asp-stat-value">${formatNumber(typeData.sum)} ₽</span>
+          </div>
+          <div class="asp-stat-item">
+            <span class="asp-stat-label">Средняя</span>
+            <span class="asp-stat-value">${formatNumber(typeData.avgPrice)} ₽</span>
+          </div>
+        </div>
+      `;
+      statsContainer.appendChild(statElement);
+    }
+  });
+  
+  return card;
+}
+
+// function updateUsedCarsTable(card, current, prevMonth, prevYear) {
+//   const tableBody = card.querySelector(".sales-dynamics-table tbody");
+//   if (!tableBody) return;
+
+//   tableBody.innerHTML = "";
+
+//   const growthMonthTotal = calculateGrowth(current.total, prevMonth.total);
+//   const growthYearTotal = calculateGrowth(current.total, prevYear.total);
+
+//   const totalRow = document.createElement("tr");
+//   totalRow.innerHTML = `
+//     <td class="fixed-column">Итого</td>
+//     <td>${current.total}</td>
+//     <td>${prevMonth.total || 0}</td>
+//     <td>${prevYear.total > 0 ? prevYear.total : "N/A"}</td>
+//     <td class="${getGrowthClass(growthMonthTotal)}">${formatGrowth(growthMonthTotal)}</td>
+//     <td class="${getGrowthClass(growthYearTotal)}">
+//       ${prevYear.total > 0 ? formatGrowth(growthYearTotal) : "N/A"}
+//     </td>
+//   `;
+//   tableBody.appendChild(totalRow);
+
+//   for (const brand in current.brands) {
+//     if (brand === "Другие") continue;
+    
+//     const currentBrand = current.brands[brand];
+//     const prevBrand = prevMonth.brands[brand] || { count: 0 };
+//     const prevYearBrand = prevYear.brands[brand] || { count: 0 };
+
+//     const growthMonth = calculateGrowth(currentBrand.count, prevBrand.count);
+//     const growthYear = calculateGrowth(currentBrand.count, prevYearBrand.count);
+
+//     const row = document.createElement("tr");
+//     row.innerHTML = `
+//       <td class="fixed-column">${brand}</td>
+//       <td>${currentBrand.count}</td>
+//       <td>${prevBrand.count || 0}</td>
+//       <td>${prevYearBrand.count > 0 ? prevYearBrand.count : "N/A"}</td>
+//       <td class="${getGrowthClass(growthMonth)}">${formatGrowth(growthMonth)}</td>
+//       <td class="${getGrowthClass(growthYear)}">
+//         ${prevYear.total > 0 ? formatGrowth(growthYear) : "N/A"}
+//       </td>
+//     `;
+//     tableBody.appendChild(row);
+//   }
+// }
 
 function updateServiceTab(data) {
   const container = document.getElementById("service-tab");
@@ -647,6 +838,35 @@ function refreshTabData(tabId) {
       dashboardData.usedCars.prevYearData,
       dashboardData.usedCars.plans
     );
+    
+    // Добавляем ASP данные к processedData
+    if (dashboardData.usedCars.aspData) {
+      // Агрегируем общие данные по ASP
+      let aggregatedASPData = {
+        'Выкуп': { plan: 0, fact: 0, sum: 0 },
+        'Trade-In': { plan: 0, fact: 0, sum: 0 },
+        'Внутренний Trade-In': { plan: 0, fact: 0, sum: 0 },
+        'Комиссия': { plan: 0, fact: 0, sum: 0 }
+      };
+
+      for (const point in dashboardData.usedCars.aspData) {
+        const pointData = dashboardData.usedCars.aspData[point];
+        processedData[point].aspData = pointData;
+        
+        // Агрегация общих данных
+        for (const type in pointData) {
+          if (aggregatedASPData[type]) {
+            aggregatedASPData[type].plan += pointData[type].plan || 0;
+            aggregatedASPData[type].fact += pointData[type].fact || 0;
+            aggregatedASPData[type].sum += pointData[type].sum || 0;
+          }
+        }
+      }
+      
+      // Добавляем агрегированные данные в объект
+      processedData.aggregatedASPData = aggregatedASPData;
+    }
+    
     updateUsedCarsTab(processedData);
   } else if (tabId === "service-tab") {
     updateServiceTab(dashboardData.serviceData);
