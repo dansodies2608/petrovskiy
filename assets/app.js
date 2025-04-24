@@ -370,40 +370,65 @@ function createSalesCard(point, pointData, type) {
   if (isNewCars) {
     const toggleBtn = card.querySelector('.toggle-brands');
     toggleBtn.addEventListener('click', function() {
-      const tableBody = card.querySelector('.sales-dynamics-table tbody');
-      const isExpanded = tableBody.querySelector('.brand-row');
-      
-      if (isExpanded) {
-        tableBody.querySelectorAll('.brand-row').forEach(row => row.remove());
-        toggleBtn.textContent = '+';
-      } else {
-        // Добавляем бренды из плана
-        for (const brand in plan.brands) {
-          const planBrand = plan.brands[brand];
-          const currentBrand = current.brands[brand] || { count: 0 };
-          const prevBrand = prevMonth.brands[brand] || { count: 0 };
-          const prevYearBrand = prevYear.brands[brand] || { count: 0 };
+        const tableBody = card.querySelector('.sales-dynamics-table tbody');
+        const isExpanded = tableBody.querySelector('.brand-row');
+        
+        if (isExpanded) {
+            tableBody.querySelectorAll('.brand-row').forEach(row => row.remove());
+            toggleBtn.textContent = '+';
+        } else {
+            // Собираем все уникальные бренды из всех периодов
+            const allBrands = new Set();
+            
+            // Добавляем бренды из текущего периода
+            for (const brand in current.brands) {
+                allBrands.add(brand);
+            }
+            
+            // Добавляем бренды из предыдущего месяца
+            for (const brand in prevMonth.brands) {
+                allBrands.add(brand);
+            }
+            
+            // Добавляем бренды из прошлого года
+            for (const brand in prevYear.brands) {
+                allBrands.add(brand);
+            }
+            
+            // Добавляем бренды из плана
+            for (const brand in plan.brands) {
+                allBrands.add(brand);
+            }
+            
+            // Сортируем бренды по алфавиту
+            const sortedBrands = Array.from(allBrands).sort();
+            
+            // Создаем строки для каждого бренда
+            sortedBrands.forEach(brand => {
+                const currentBrand = current.brands[brand] || { count: 0 };
+                const prevBrand = prevMonth.brands[brand] || { count: 0 };
+                const prevYearBrand = prevYear.brands[brand] || { count: 0 };
 
-          const row = document.createElement('tr');
-          row.className = 'brand-row';
-          row.innerHTML = `
-            <td class="fixed-column" style="padding-left: 30px;">${brand}</td>
-            <td>${currentBrand.count}</td>
-            <td>${prevBrand.count || 0}</td>
-            <td>${prevYearBrand.count > 0 ? prevYearBrand.count : "N/A"}</td>
-            <td class="${getGrowthClass(calculateGrowth(currentBrand.count, prevBrand.count))}">
-              ${formatGrowth(calculateGrowth(currentBrand.count, prevBrand.count))}
-            </td>
-            <td class="${getGrowthClass(calculateGrowth(currentBrand.count, prevYearBrand.count))}">
-              ${prevYearBrand.count > 0 ? formatGrowth(calculateGrowth(currentBrand.count, prevYearBrand.count)) : "N/A"}
-            </td>
-          `;
-          tableBody.appendChild(row);
+                const row = document.createElement('tr');
+                row.className = 'brand-row';
+                row.innerHTML = `
+                    <td class="fixed-column" style="padding-left: 30px;">${brand}</td>
+                    <td>${currentBrand.count}</td>
+                    <td>${prevBrand.count || 0}</td>
+                    <td>${prevYearBrand.count > 0 ? prevYearBrand.count : "N/A"}</td>
+                    <td class="${getGrowthClass(calculateGrowth(currentBrand.count, prevBrand.count))}">
+                        ${formatGrowth(calculateGrowth(currentBrand.count, prevBrand.count))}
+                    </td>
+                    <td class="${getGrowthClass(calculateGrowth(currentBrand.count, prevYearBrand.count))}">
+                        ${prevYearBrand.count > 0 ? formatGrowth(calculateGrowth(currentBrand.count, prevYearBrand.count)) : "N/A"}
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+            toggleBtn.textContent = '-';
         }
-        toggleBtn.textContent = '-';
-      }
     });
-  } else {
+} else {
     updateUsedCarsTable(card, current, prevMonth, prevYear);
   }
 
