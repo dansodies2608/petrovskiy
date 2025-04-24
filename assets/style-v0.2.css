@@ -776,11 +776,7 @@ font-size: 15px;
 color: #333;
 }
 
-.asp-summary-grid {
-display: grid;
-grid-template-columns: repeat(5, 1fr);
-gap: 10px;
-}
+.asp-summary-grid {display: grid;grid-template-columns: repeat(2, 1fr);gap: 10px;}
 
 .asp-summary-item {
 display: flex;
@@ -829,11 +825,7 @@ margin-bottom: 5px;
 font-size: 13px;
 }
 
-.asp-point-grid {
-display: grid;
-grid-template-columns: repeat(3, 1fr);
-gap: 8px;
-}
+.asp-point-grid {display: grid;grid-template-columns: repeat(2, 1fr);gap: 8px;}
 
 .asp-point-item {
 display: flex;
