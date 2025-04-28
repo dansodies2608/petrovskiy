@@ -122,6 +122,7 @@ async function loadData(isInitialLoad) {
     processAndDisplayData(dashboardData);
   } catch (error) {
     console.error("Ошибка загрузки данных:", error);
+    console.log(dashboardData);
     showError("Не удалось загрузить данные. Пожалуйста, попробуйте позже.");
   } finally {
     showLoading(false);
