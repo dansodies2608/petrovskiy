@@ -122,7 +122,6 @@ async function loadData(isInitialLoad) {
     processAndDisplayData(dashboardData);
   } catch (error) {
     console.error("Ошибка загрузки данных:", error);
-    console.log(dashboardData);
     showError("Не удалось загрузить данные. Пожалуйста, попробуйте позже.");
   } finally {
     showLoading(false);
@@ -153,33 +152,35 @@ function processAndDisplayData(data) {
       data.usedCars.plans
     );
     
-    // Агрегируем общие данные по ASP
-    let aggregatedASPData = {
-      'Выкуп': { plan: 0, fact: 0, sum: 0 },
-      'Trade-In': { plan: 0, fact: 0, sum: 0 },
-      'Внутренний Trade-In': { plan: 0, fact: 0, sum: 0 },
-      'Комиссия': { plan: 0, fact: 0, sum: 0 }
-    };
-
-    // Добавляем ASP данные и агрегируем общие показатели
+    // Добавляем ASP данные только если они существуют
     if (data.usedCars.aspData) {
+      // Агрегируем общие данные по ASP
+      let aggregatedASPData = {
+        'Выкуп': { plan: 0, fact: 0, sum: 0 },
+        'Trade-In': { plan: 0, fact: 0, sum: 0 },
+        'Внутренний Trade-In': { plan: 0, fact: 0, sum: 0 },
+        'Комиссия': { plan: 0, fact: 0, sum: 0 }
+      };
+
       for (const point in data.usedCars.aspData) {
-        const pointData = data.usedCars.aspData[point];
-        processedUsedCars[point].aspData = pointData;
-        
-        // Агрегация общих данных
-        for (const type in pointData) {
-          if (aggregatedASPData[type]) {
-            aggregatedASPData[type].plan += pointData[type].plan || 0;
-            aggregatedASPData[type].fact += pointData[type].fact || 0;
-            aggregatedASPData[type].sum += pointData[type].sum || 0;
+        // Проверяем, существует ли точка в processedUsedCars
+        if (processedUsedCars[point]) {
+          processedUsedCars[point].aspData = data.usedCars.aspData[point];
+          
+          // Агрегация общих данных
+          for (const type in data.usedCars.aspData[point]) {
+            if (aggregatedASPData[type]) {
+              aggregatedASPData[type].plan += data.usedCars.aspData[point][type].plan || 0;
+              aggregatedASPData[type].fact += data.usedCars.aspData[point][type].fact || 0;
+              aggregatedASPData[type].sum += data.usedCars.aspData[point][type].sum || 0;
+            }
           }
         }
       }
+      
+      // Добавляем агрегированные данные в объект
+      processedUsedCars.aggregatedASPData = aggregatedASPData;
     }
-    
-    // Добавляем агрегированные данные в объект
-    processedUsedCars.aggregatedASPData = aggregatedASPData;
     
     updateUsedCarsTab(processedUsedCars);
   }
@@ -840,7 +841,7 @@ function refreshTabData(tabId) {
       dashboardData.usedCars.plans
     );
     
-    // Добавляем ASP данные к processedData
+    // Добавляем ASP данные только если они существуют
     if (dashboardData.usedCars.aspData) {
       // Агрегируем общие данные по ASP
       let aggregatedASPData = {
@@ -851,15 +852,17 @@ function refreshTabData(tabId) {
       };
 
       for (const point in dashboardData.usedCars.aspData) {
-        const pointData = dashboardData.usedCars.aspData[point];
-        processedData[point].aspData = pointData;
-        
-        // Агрегация общих данных
-        for (const type in pointData) {
-          if (aggregatedASPData[type]) {
-            aggregatedASPData[type].plan += pointData[type].plan || 0;
-            aggregatedASPData[type].fact += pointData[type].fact || 0;
-            aggregatedASPData[type].sum += pointData[type].sum || 0;
+        // Проверяем, существует ли точка в processedData
+        if (processedData[point]) {
+          processedData[point].aspData = dashboardData.usedCars.aspData[point];
+          
+          // Агрегация общих данных
+          for (const type in dashboardData.usedCars.aspData[point]) {
+            if (aggregatedASPData[type]) {
+              aggregatedASPData[type].plan += dashboardData.usedCars.aspData[point][type].plan || 0;
+              aggregatedASPData[type].fact += dashboardData.usedCars.aspData[point][type].fact || 0;
+              aggregatedASPData[type].sum += dashboardData.usedCars.aspData[point][type].sum || 0;
+            }
           }
         }
       }
