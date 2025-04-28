@@ -198,7 +198,7 @@ function updateMKCTab(data) {
 
   for (const point in data) {
     const pointData = data[point];
-
+    if (pointData.nh.plan > 0 && pointData.gm1.plan > 0) {
     const card = document.createElement("div");
     card.className = "service-card";
 
@@ -225,6 +225,7 @@ function updateMKCTab(data) {
     `;
 
     container.appendChild(card);
+    }
   }
 }
 
@@ -257,12 +258,15 @@ function processSalesData(currentData, prevData, prevYearData, plans) {
   });
 
   sortedPoints.forEach((point) => {
-    result[point] = {
-      current: processPeriodData(currentData, point),
-      prevMonth: processPeriodData(prevData, point),
-      prevYear: processPeriodData(prevYearData, point),
-      plan: plans?.[point] || { total: getDefaultPlan(point, 'new'), jok: 0, brands: {} }
-    };
+    // Проверяем, есть ли план для этой точки и он больше 0
+    if (plans?.[point]?.total > 0) {
+      result[point] = {
+        current: processPeriodData(currentData, point),
+        prevMonth: processPeriodData(prevData, point),
+        prevYear: processPeriodData(prevYearData, point),
+        plan: plans[point]
+      };
+    }
   });
 
   return result;
@@ -683,7 +687,7 @@ function updateServiceTab(data) {
 
   for (const point in data) {
     const pointData = data[point];
-
+    if (pointData.nh.plan > 0 && pointData.gm1.plan > 0) {
     const card = document.createElement("div");
     card.className = "service-card";
 
@@ -710,6 +714,7 @@ function updateServiceTab(data) {
     `;
 
     container.appendChild(card);
+  }
   }
 }
 
