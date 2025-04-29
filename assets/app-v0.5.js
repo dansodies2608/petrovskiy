@@ -19,6 +19,12 @@ function setupTabHandlers() {
   const tabs = document.querySelectorAll(".tab-btn");
   tabs.forEach((tab) => {
     tab.addEventListener("click", function () {
+      // Прокрутка вверх перед переключением
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth" // Плавная прокрутка
+      });
+
       tabs.forEach((t) => t.classList.remove("active"));
       this.classList.add("active");
 
@@ -152,33 +158,10 @@ function processAndDisplayData(data) {
       data.usedCars.plans
     );
     
-    // Добавляем ASP данные только если они существуют
+    // 2. Добавляем ASP данные, если они есть (независимо от продаж)
     if (data.usedCars.aspData) {
       // Агрегируем общие данные по ASP
-      let aggregatedASPData = {
-        'Выкуп': { plan: 0, fact: 0, sum: 0 },
-        'Trade-In': { plan: 0, fact: 0, sum: 0 },
-        'Внутренний Trade-In': { plan: 0, fact: 0, sum: 0 },
-        'Комиссия': { plan: 0, fact: 0, sum: 0 }
-      };
-
-      for (const point in data.usedCars.aspData) {
-        // Проверяем, существует ли точка в processedUsedCars
-        if (processedUsedCars[point]) {
-          processedUsedCars[point].aspData = data.usedCars.aspData[point];
-          
-          // Агрегация общих данных
-          for (const type in data.usedCars.aspData[point]) {
-            if (aggregatedASPData[type]) {
-              aggregatedASPData[type].plan += data.usedCars.aspData[point][type].plan || 0;
-              aggregatedASPData[type].fact += data.usedCars.aspData[point][type].fact || 0;
-              aggregatedASPData[type].sum += data.usedCars.aspData[point][type].sum || 0;
-            }
-          }
-        }
-      }
-      
-      // Добавляем агрегированные данные в объект
+      const aggregatedASPData = calculateAggregatedASPData(data.usedCars.aspData);
       processedUsedCars.aggregatedASPData = aggregatedASPData;
     }
     
@@ -242,23 +225,22 @@ function processSalesData(currentData, prevData, prevYearData, plans) {
     });
   });
 
-  currentData.concat(prevData, prevYearData).forEach((item) => {
-    if (item.salesPoint) {
-      allPoints.add(item.salesPoint === "Каширское ш." ? "Каширка" : item.salesPoint);
+  // Жёстко заданный порядок точек
+  const orderedPoints = [
+    'Софийская',
+    'Руставели',
+    'Каширка'
+  ];
+
+  // Добавляем остальные точки (кроме уже указанных), сохраняя исходный порядок
+  allPoints.forEach(point => {
+    if (!orderedPoints.includes(point)) {
+      orderedPoints.push(point);
     }
   });
 
-  // Сортируем точки: сначала Питер, потом Москва
-  const sortedPoints = Array.from(allPoints).sort((a, b) => {
-    const isSpbA = isSpbPoint(a);
-    const isSpbB = isSpbPoint(b);
-    if (isSpbA && !isSpbB) return -1;
-    if (!isSpbA && isSpbB) return 1;
-    return a.localeCompare(b);
-  });
-
-  sortedPoints.forEach((point) => {
-    // Проверяем, есть ли план для этой точки и он больше 0
+  // Обрабатываем точки в нужном порядке
+  orderedPoints.forEach(point => {
     if (plans?.[point]?.total > 0) {
       result[point] = {
         current: processPeriodData(currentData, point),
@@ -321,12 +303,20 @@ function updateUsedCarsTab(data) {
 
   container.innerHTML = "";
 
-  // 1. Добавляем общую сводку по ASP
+  // 1. Добавляем карточки по точкам продаж
+  for (const point in data) {
+    if (point !== 'aggregatedASPData' && data[point]) {
+      const card = createSalesCard(point, data[point], "used");
+      container.appendChild(card);
+    }
+  }
+
+  // 2. Добавляем общую сводку по ASP
   if (data.aggregatedASPData) {
     const summaryCard = document.createElement("div");
     summaryCard.className = "card asp-summary-card";
     summaryCard.innerHTML = `
-      <h2>Общие данные по приему авто</h2>
+      <h2>Сводные данные по приему</h2>
       <div class="asp-summary-container"></div>
     `;
     
@@ -375,14 +365,6 @@ function updateUsedCarsTab(data) {
     
     container.appendChild(summaryCard);
   }
-
-  // 2. Добавляем карточки по точкам продаж
-  for (const point in data) {
-    if (point !== 'aggregatedASPData' && data[point]) {
-      const card = createSalesCard(point, data[point], "used");
-      container.appendChild(card);
-    }
-  }
 }
 
 function createSalesCard(point, pointData, type) {
@@ -422,7 +404,7 @@ function createSalesCard(point, pointData, type) {
     <div class="sales-dynamics">
       <h3 class="dynamics-header">
         <span>Динамика продаж</span>
-        ${isNewCars ? '<button class="toggle-brands">+</button>' : ''}
+        ${isNewCars ? '<button class="toggle-brands" style="display: none;">+</button>' : ''}
       </h3>
       
       <div class="dynamics-overview">
@@ -454,48 +436,48 @@ function createSalesCard(point, pointData, type) {
   `;
 
   // Добавляем данные о приеме для текущей точки
-  if (!isNewCars && aspData) {
-    const aspSection = document.createElement("div");
-    aspSection.className = "asp-point-section";
-    aspSection.innerHTML = `
-      <h3 class="asp-point-header">Прием автомобилей</h3>
-      <div class="asp-point-stats"></div>
-    `;
+  // if (!isNewCars && aspData) {
+  //   const aspSection = document.createElement("div");
+  //   aspSection.className = "asp-point-section";
+  //   aspSection.innerHTML = `
+  //     <h3 class="asp-point-header">Прием автомобилей</h3>
+  //     <div class="asp-point-stats"></div>
+  //   `;
     
-    const statsContainer = aspSection.querySelector(".asp-point-stats");
+  //   const statsContainer = aspSection.querySelector(".asp-point-stats");
     
-    const dealTypes = ['Выкуп', 'Trade-In', 'Внутренний Trade-In', 'Комиссия'];
+  //   const dealTypes = ['Выкуп', 'Trade-In', 'Внутренний Trade-In', 'Комиссия'];
     
-    dealTypes.forEach(type => {
-      if (aspData[type]) {
-        const typeData = aspData[type];
-        const avgPrice = typeData.fact ? typeData.sum / typeData.fact : 0;
+  //   dealTypes.forEach(type => {
+  //     if (aspData[type]) {
+  //       const typeData = aspData[type];
+  //       const avgPrice = typeData.fact ? typeData.sum / typeData.fact : 0;
         
-        const statElement = document.createElement("div");
-        statElement.className = "asp-point-stat";
-        statElement.innerHTML = `
-          <div class="asp-point-type">${type}</div>
-          <div class="asp-point-grid">
-            <div class="asp-point-item">
-              <span class="asp-point-label">Факт</span>
-              <span class="asp-point-value">${typeData.fact} шт</span>
-            </div>
-            <div class="asp-point-item">
-              <span class="asp-point-label">Сумма</span>
-              <span class="asp-point-value">${formatNumber(typeData.sum)} ₽</span>
-            </div>
-            <div class="asp-point-item">
-              <span class="asp-point-label">Средняя</span>
-              <span class="asp-point-value">${formatNumber(avgPrice)} ₽</span>
-            </div>
-          </div>
-        `;
-        statsContainer.appendChild(statElement);
-      }
-    });
+  //       const statElement = document.createElement("div");
+  //       statElement.className = "asp-point-stat";
+  //       statElement.innerHTML = `
+  //         <div class="asp-point-type">${type}</div>
+  //         <div class="asp-point-grid">
+  //           <div class="asp-point-item">
+  //             <span class="asp-point-label">Факт</span>
+  //             <span class="asp-point-value">${typeData.fact} шт</span>
+  //           </div>
+  //           <div class="asp-point-item">
+  //             <span class="asp-point-label">Сумма</span>
+  //             <span class="asp-point-value">${formatNumber(typeData.sum)} ₽</span>
+  //           </div>
+  //           <div class="asp-point-item">
+  //             <span class="asp-point-label">Средняя</span>
+  //             <span class="asp-point-value">${formatNumber(avgPrice)} ₽</span>
+  //           </div>
+  //         </div>
+  //       `;
+  //       statsContainer.appendChild(statElement);
+  //     }
+  //   });
     
-    card.appendChild(aspSection);
-  }
+  //   card.appendChild(aspSection);
+  // }
 
   const toggleBtn = card.querySelector('.toggle-brands');
   const brandsContainer = card.querySelector('.brands-container');
@@ -577,6 +559,32 @@ function createBrandRow(brand, current, prevMonth, prevYear) {
   `;
   
   return row;
+}
+
+function calculateAggregatedASPData(aspData) {
+  const aggregated = {
+    'Выкуп': { plan: 0, fact: 0, sum: 0 },
+    'Trade-In': { plan: 0, fact: 0, sum: 0 },
+    'Внутренний Trade-In': { plan: 0, fact: 0, sum: 0 },
+    'Комиссия': { plan: 0, fact: 0, sum: 0 }
+  };
+
+  // Собираем данные по всем точкам
+  for (const point in aspData) {
+    for (const type in aspData[point]) {
+      if (aggregated[type]) {
+        // План берем только из первой точки (они одинаковые)
+        if (aggregated[type].plan === 0) {
+          aggregated[type].plan = aspData[point][type].plan || 0;
+        }
+        // Суммируем факт и сумму по всем точкам
+        aggregated[type].fact += aspData[point][type].fact || 0;
+        aggregated[type].sum += aspData[point][type].sum || 0;
+      }
+    }
+  }
+
+  return aggregated;
 }
 
 // Новая функция для создания карточки приема АСП
@@ -839,6 +847,7 @@ function refreshTabData(tabId) {
     );
     updateNewCarsTab(processedData);
   } else if (tabId === "used-cars-tab") {
+    // 1. Обрабатываем данные продаж
     const processedData = processSalesData(
       dashboardData.usedCars.currentData,
       dashboardData.usedCars.prevData,
@@ -846,34 +855,16 @@ function refreshTabData(tabId) {
       dashboardData.usedCars.plans
     );
     
-    // Добавляем ASP данные только если они существуют
+    // 2. Добавляем ASP данные независимо от продаж
     if (dashboardData.usedCars.aspData) {
-      // Агрегируем общие данные по ASP
-      let aggregatedASPData = {
-        'Выкуп': { plan: 0, fact: 0, sum: 0 },
-        'Trade-In': { plan: 0, fact: 0, sum: 0 },
-        'Внутренний Trade-In': { plan: 0, fact: 0, sum: 0 },
-        'Комиссия': { plan: 0, fact: 0, sum: 0 }
-      };
-
+      processedData.aggregatedASPData = calculateAggregatedASPData(dashboardData.usedCars.aspData);
+      
+      // 3. Добавляем ASP данные для конкретных точек (если есть продажи)
       for (const point in dashboardData.usedCars.aspData) {
-        // Проверяем, существует ли точка в processedData
         if (processedData[point]) {
           processedData[point].aspData = dashboardData.usedCars.aspData[point];
-          
-          // Агрегация общих данных
-          for (const type in dashboardData.usedCars.aspData[point]) {
-            if (aggregatedASPData[type]) {
-              aggregatedASPData[type].plan += dashboardData.usedCars.aspData[point][type].plan || 0;
-              aggregatedASPData[type].fact += dashboardData.usedCars.aspData[point][type].fact || 0;
-              aggregatedASPData[type].sum += dashboardData.usedCars.aspData[point][type].sum || 0;
-            }
-          }
         }
       }
-      
-      // Добавляем агрегированные данные в объект
-      processedData.aggregatedASPData = aggregatedASPData;
     }
     
     updateUsedCarsTab(processedData);
@@ -963,7 +954,8 @@ function calculateGrowth(current, previous) {
 function formatGrowth(value) {
   if (value === Infinity) return "+∞%";
   if (value === -Infinity) return "-∞%";
-  if (isNaN(value)) return "N/A";
+  if (isNaN(value)) {return "N/A";}
+
   return `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
 }
 
