@@ -337,11 +337,11 @@ function updateUsedCarsTab(data) {
           <div class="asp-summary-grid">
             <div class="asp-summary-item">
               <span class="asp-summary-label">План</span>
-              <span class="asp-summary-value">${formatNumber(typeData.plan)} шт</span>
+              <span class="asp-summary-value">${typeData.plan} шт</span>
             </div>
             <div class="asp-summary-item">
               <span class="asp-summary-label">Факт</span>
-              <span class="asp-summary-value">${formatNumber(typeData.fact)} шт</span>
+              <span class="asp-summary-value">${typeData.fact} шт</span>
             </div>
             <div class="asp-summary-item">
               <span class="asp-summary-label">Отклонение</span>
