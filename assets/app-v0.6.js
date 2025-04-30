@@ -38,7 +38,7 @@ function saveTokenToServer(token) {
 // Регистрация Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('firebase-messaging-sw.js')
+    navigator.serviceWorker.register('/assets/firebase-messaging-sw.js')
       .then(registration => {
         console.log('SW registered');
         requestNotificationPermission();
