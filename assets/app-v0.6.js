@@ -56,31 +56,38 @@ async function initPushNotifications() {
 
 // Отправка токена на сервер
 async function saveTokenToServer(token) {
-  const url = SCRIPT_URL;
-  
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: `key=${SECRET_KEY}&action=save_token&token=${encodeURIComponent(token)}`
-    });
+  return new Promise((resolve, reject) => {
+    // Создаем script элемент для JSONP
+    const script = document.createElement('script');
+    const callbackName = `jsonp_${Date.now()}`;
     
-    if (!response.ok) throw new Error('Ошибка сети');
+    // Формируем URL с callback-функцией
+    const url = `${SCRIPT_URL}?key=${SECRET_KEY}&action=save_token&token=${encodeURIComponent(token)}&callback=${callbackName}`;
     
-    const data = await response.json();
-    console.log('Ответ сервера:', data);
+    // Определяем callback-функцию
+    window[callbackName] = (response) => {
+      delete window[callbackName];
+      document.body.removeChild(script);
+      
+      if (response.status === 'success') {
+        console.log('Токен успешно сохранен:', response);
+        resolve(response);
+      } else {
+        console.error('Ошибка сохранения токена:', response);
+        reject(new Error(response.message || 'Неизвестная ошибка'));
+      }
+    };
     
-    if (data.status !== 'success') {
-      throw new Error(data.message || 'Ошибка сохранения токена');
-    }
+    // Обработка ошибок
+    script.onerror = () => {
+      delete window[callbackName];
+      document.body.removeChild(script);
+      reject(new Error('Не удалось выполнить запрос'));
+    };
     
-    return data;
-  } catch (error) {
-    console.error('Ошибка сохранения токена:', error);
-    throw error;
-  }
+    script.src = url;
+    document.body.appendChild(script);
+  });
 }
 
 // Инициализация при загрузке страницы
