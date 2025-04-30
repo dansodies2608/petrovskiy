@@ -1,6 +1,59 @@
-// --------------------------------------- ОСНОВНОЙ КОД ------------------------------------------------ //
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmiq2x3zkNetsY9DPJym3tVSPkuC4YY8lWa7w270PILhW4XgaaLAjAb0AkHk-pr2GbVw/exec";
 const SECRET_KEY = "YOUR_SECRET_KEY";
+
+// --------------------------------------- Уведомления ------------------------------------------------ //
+
+const firebaseConfig = {
+    apiKey: "AIzaSyAW2SdDTCpt25PVoB7ROt-tiVrFuabwE4I",
+    authDomain: "petrovkiy-v1.firebaseapp.com",
+    projectId: "petrovkiy-v1",
+    storageBucket: "petrovkiy-v1.firebasestorage.app",
+    messagingSenderId: "146966889113",
+    appId: "1:146966889113:web:e0c92825038949959dae08"
+  };
+
+firebase.initializeApp(firebaseConfig);
+// Инициализация Firebase Messaging
+const messaging = firebase.messaging();
+
+// Запрос разрешения на уведомления + получение токена
+function getFCMToken() {
+  // 1. Запрашиваем разрешение (только при первом запуске)
+  Notification.requestPermission().then((permission) => {
+    if (permission === 'granted') {
+      console.log('Notification permission granted.');
+      
+      // 2. Получаем FCM-токен устройства
+      messaging.getToken({ vapidKey: "ВАШ_VAPID_KEY" }).then((currentToken) => {
+        if (currentToken) {
+          console.log('FCM Token:', currentToken);
+          // 3. Отправляем токен на сервер (Google Apps Script)
+          saveTokenToServer(currentToken);
+        } else {
+          console.warn('No FCM token available.');
+        }
+      });
+    } else {
+      console.warn('Notification permission denied.');
+    }
+  }).catch((err) => {
+    console.error('Error requesting permission:', err);
+  });
+}
+
+// Отправка токена на сервер
+function saveTokenToServer(token) {
+  const url = `${SCRIPT_URL}?key=${SECRET_KEY}&action=save_token&token=${token}`;
+  fetch(url)
+    .then(response => response.json())
+    .then(data => console.log('Token saved:', data))
+    .catch(err => console.error('Error saving token:', err));
+}
+
+// Вызываем при загрузке PWA
+getFCMToken();
+
+// --------------------------------------- ОСНОВНОЙ КОД ------------------------------------------------ //
 
 let dashboardData = null;
 
