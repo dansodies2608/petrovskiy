@@ -57,23 +57,11 @@ async function initPushNotifications() {
 // Отправка токена на сервер
 async function saveTokenToServer(token) {
   try {
-    // 1. Сначала отправляем OPTIONS запрос
-    await fetch(SCRIPT_URL + "?options", {
-      method: 'OPTIONS'
-    });
-
-    // 2. Затем отправляем основной POST запрос
-    const response = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'cors', // явно указываем режим CORS
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        key: SECRET_KEY,
-        action: 'save_token',
-        token: token
-      })
+    const url = `${SCRIPT_URL}?key=${SECRET_KEY}&action=save_token&token=${encodeURIComponent(token)}`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      mode: 'cors'
     });
 
     if (!response.ok) {
