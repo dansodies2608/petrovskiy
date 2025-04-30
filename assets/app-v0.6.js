@@ -30,7 +30,7 @@ async function setupMessaging() {
     
     // Получаем токен с указанием зарегистрированного сервис-воркера
     const token = await messaging.getToken({
-      vapidKey: "ВАШ_VAPID_KEY",
+      vapidKey: "BHRB-EfAZe9ZpVWLgdrVT-TalYRTwdgZiKmeAph0Me3zIBbvVMTBaSdKGNh3rLmhGIL0AdvBsrRX2z4ITlEIaBY",
       serviceWorkerRegistration: registration
     });
     
