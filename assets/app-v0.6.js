@@ -28,7 +28,7 @@ function getFCMToken() {
 }
 
 function saveTokenToServer(token) {
-  const url = 'https://script.google.com/.../exec';
+  const url = 'https://script.google.com/macros/s/AKfycbzmiq2x3zkNetsY9DPJym3tVSPkuC4YY8lWa7w270PILhW4XgaaLAjAb0AkHk-pr2GbVw/exec';
   fetch(url, {
     method: 'POST',
     body: JSON.stringify({ action: 'save_token', token })
@@ -38,7 +38,7 @@ function saveTokenToServer(token) {
 // Регистрация Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/firebase-messaging-sw.js')
+    navigator.serviceWorker.register('assets/firebase-messaging-sw.js')
       .then(registration => {
         console.log('SW registered');
         requestNotificationPermission();
