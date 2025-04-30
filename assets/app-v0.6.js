@@ -57,8 +57,15 @@ async function initPushNotifications() {
 // Отправка токена на сервер
 async function saveTokenToServer(token) {
   try {
+    // 1. Сначала отправляем OPTIONS запрос
+    await fetch(SCRIPT_URL + "?options", {
+      method: 'OPTIONS'
+    });
+
+    // 2. Затем отправляем основной POST запрос
     const response = await fetch(SCRIPT_URL, {
       method: 'POST',
+      mode: 'cors', // явно указываем режим CORS
       headers: {
         'Content-Type': 'application/json',
       },
@@ -68,16 +75,14 @@ async function saveTokenToServer(token) {
         token: token
       })
     });
-    
+
     if (!response.ok) {
-      throw new Error('Ошибка сети');
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
     
-    const data = await response.json();
-    console.log('Токен успешно сохранен:', data);
-    return data;
+    return await response.json();
   } catch (error) {
-    console.error('Ошибка сохранения токена:', error);
+    console.error('Ошибка при сохранении токена:', error);
     throw error;
   }
 }
