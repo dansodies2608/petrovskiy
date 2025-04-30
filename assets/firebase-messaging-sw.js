@@ -1,6 +1,3 @@
-importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js');
-importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js');
-
 // Инициализация Firebase
 firebase.initializeApp({
   apiKey: "AIzaSyAW2SdDTCpt25PVoB7ROt-tiVrFuabwE4I",
@@ -19,7 +16,7 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
     body: payload.notification.body,
-    icon: '/icon.png',
+    icon: 'p-192.png',
     vibrate: [200, 100, 200] // Вибрация на мобильных
   };
   self.registration.showNotification(notificationTitle, notificationOptions);
