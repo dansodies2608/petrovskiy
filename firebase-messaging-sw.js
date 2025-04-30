@@ -26,7 +26,7 @@ try {
     const notificationTitle = payload.notification?.title || 'Новое сообщение';
     const notificationOptions = {
       body: payload.notification?.body || '',
-      icon: 'p-192.png',
+      icon: '/petrovskiy/p-192.png',
       data: payload.data || {}
     };
 
