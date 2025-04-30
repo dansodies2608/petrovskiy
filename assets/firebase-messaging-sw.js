@@ -1,7 +1,3 @@
-// firebase-messaging-sw.js
-importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js');
-importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js');
-
 const firebaseConfig = {
   apiKey: "AIzaSyAW2SdDTCpt25PVoB7ROt-tiVrFuabwE4I",
   authDomain: "petrovkiy-v1.firebaseapp.com",
@@ -11,17 +7,20 @@ const firebaseConfig = {
   appId: "1:146966889113:web:e0c92825038949959dae08"
 };
 
+// Инициализация Firebase в Service Worker
+importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js');
+importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js');
+
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-// Обработка фоновых уведомлений (когда приложение закрыто)
 messaging.onBackgroundMessage((payload) => {
-  console.log('Уведомление получено в фоне:', payload);
+  console.log('[SW] Received background message', payload);
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
     body: payload.notification.body,
     icon: 'p-192.png',
-    vibrate: [200, 100, 200] // Вибрация на мобильных
+    vibrate: [200, 100, 200]
   };
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
