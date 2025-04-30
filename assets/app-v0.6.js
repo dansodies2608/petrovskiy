@@ -56,11 +56,19 @@ async function initPushNotifications() {
 
 // Отправка токена на сервер
 function saveTokenToServer(token) {
-  const url = `${SCRIPT_URL}?key=${SECRET_KEY}&action=save_token&token=${token}`;
-  fetch(url)
-    .then(response => response.json())
-    .then(data => console.log('Token saved:', data))
-    .catch(err => console.error('Error saving token:', err));
+  const url = `${SCRIPT_URL}?key=${SECRET_KEY}&action=save_token&token=${encodeURIComponent(token)}`;
+  
+  // Используем режим 'no-cors' и отправляем как POST запрос
+  fetch(url, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: `key=${SECRET_KEY}&action=save_token&token=${encodeURIComponent(token)}`
+  })
+  .then(() => console.log('Token sent to server'))
+  .catch(err => console.error('Error saving token:', err));
 }
 
 // Инициализация при загрузке страницы
