@@ -54,31 +54,13 @@ async function initPushNotifications() {
   }
 }
 
-// Улучшенная функция сохранения токена
-async function saveTokenToServer(token) {
-  try {
-    const url = new URL('https://script.google.com/macros/s/AKfycbzmiq2x3zkNetsY9DPJym3tVSPkuC4YY8lWa7w270PILhW4XgaaLAjAb0AkHk-pr2GbVw/exec');
-    url.searchParams.append('key', SECRET_KEY);
-    url.searchParams.append('action', 'save_token');
-    url.searchParams.append('token', token);
-
-    // Добавляем параметр для CORS
-    url.searchParams.append('cors', 'true');
-
-    const response = await fetch(url, {
-      method: 'GET',
-      mode: 'cors', // Явно указываем режим CORS
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) throw new Error('Network response was not ok');
-    return await response.json();
-  } catch (error) {
-    console.error('Error saving token:', error);
-    throw error;
-  }
+// Отправка токена на сервер
+function saveTokenToServer(token) {
+  const url = `${SCRIPT_URL}?key=${SECRET_KEY}&action=save_token&token=${token}`;
+  fetch(url)
+    .then(response => response.json())
+    .then(data => console.log('Token saved:', data))
+    .catch(err => console.error('Error saving token:', err));
 }
 
 // Инициализация при загрузке страницы
