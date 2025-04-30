@@ -1,74 +1,49 @@
-// Инициализация Firebase в основном потоке
-const firebaseConfig = {
+const firebaseApp = firebase.initializeApp({
   apiKey: "AIzaSyAW2SdDTCpt25PVoB7ROt-tiVrFuabwE4I",
   authDomain: "petrovkiy-v1.firebaseapp.com",
   projectId: "petrovkiy-v1",
   storageBucket: "petrovkiy-v1.appspot.com",
   messagingSenderId: "146966889113",
   appId: "1:146966889113:web:e0c92825038949959dae08"
-};
+});
 
-// Инициализируем Firebase только если он еще не инициализирован
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-} else {
-  firebase.app(); // если уже инициализирован, используем существующий экземпляр
-}
+const messaging = firebase.messaging();
 
-// Функция запроса разрешения на уведомления
 function requestNotificationPermission() {
   Notification.requestPermission().then((permission) => {
     if (permission === 'granted') {
       console.log('Разрешение получено!');
-      getFCMToken(); // Получаем токен устройства
-    } else {
-      console.log('Пользователь отклонил уведомления');
+      getFCMToken();
     }
   });
 }
 
-// Получение FCM-токена
 function getFCMToken() {
-  const messaging = firebase.messaging();
-  messaging.getToken({ vapidKey: 'BHRB-EfAZe9ZpVWLgdrVT-TalYRTwdgZiKmeAph0Me3zIBbvVMTBaSdKGNh3rLmhGIL0AdvBsrRX2z4ITlEIaBY' })
-    .then((token) => {
-      console.log('FCM Token:', token);
-      saveTokenToServer(token);
-    })
-    .catch((err) => {
-      console.log('Ошибка получения токена:', err);
-    });
+  messaging.getToken({ 
+    vapidKey: 'BHRB-EfAZe9ZpVWLgdrVT-TalYRTwdgZiKmeAph0Me3zIBbvVMTBaSdKGNh3rLmhGIL0AdvBsrRX2z4ITlEIaBY'
+  }).then((token) => {
+    console.log('FCM Token:', token);
+    saveTokenToServer(token);
+  });
 }
 
-// Сохранение токена на сервере
 function saveTokenToServer(token) {
-  const url = 'https://script.google.com/macros/s/AKfycbzmiq2x3zkNetsY9DPJym3tVSPkuC4YY8lWa7w270PILhW4XgaaLAjAb0AkHk-pr2GbVw/exec';
+  const url = 'https://script.google.com/.../exec';
   fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ action: 'save_token', token: token })
-  })
-  .then(response => response.text())
-  .then(data => console.log('Токен сохранен:', data))
-  .catch(error => console.error('Ошибка сохранения токена:', error));
+    body: JSON.stringify({ action: 'save_token', token })
+  });
 }
-
-// Вызываем запрос разрешения при загрузке страницы
-document.addEventListener('DOMContentLoaded', () => {
-  requestNotificationPermission();
-});
 
 // Регистрация Service Worker
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/firebase-messaging-sw.js')
-    .then(registration => {
-      console.log('Service Worker зарегистрирован:', registration);
-    })
-    .catch(error => {
-      console.log('Ошибка регистрации Service Worker:', error);
-    });
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/firebase-messaging-sw.js')
+      .then(registration => {
+        console.log('SW registered');
+        requestNotificationPermission();
+      });
+  });
 }
 
 // --------------------------------------- ОСНОВНОЙ КОД ------------------------------------------------ //
