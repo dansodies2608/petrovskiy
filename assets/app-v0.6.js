@@ -79,7 +79,7 @@ async function saveTokenToServer(token) {
 
 let dashboardData = null;
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
   // Проверяем поддержку сервис-воркеров
   if (!('serviceWorker' in navigator)) {
     console.error('Service workers are not supported');
