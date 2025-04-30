@@ -24,7 +24,7 @@ function getFCMToken() {
       console.log('Notification permission granted.');
       
       // 2. Получаем FCM-токен устройства
-      messaging.getToken({ vapidKey: "ВАШ_VAPID_KEY" }).then((currentToken) => {
+      messaging.getToken({ vapidKey: "BHRB-EfAZe9ZpVWLgdrVT-TalYRTwdgZiKmeAph0Me3zIBbvVMTBaSdKGNh3rLmhGIL0AdvBsrRX2z4ITlEIaBY" }).then((currentToken) => {
         if (currentToken) {
           console.log('FCM Token:', currentToken);
           // 3. Отправляем токен на сервер (Google Apps Script)
