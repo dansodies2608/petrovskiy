@@ -12,34 +12,43 @@ const firebaseConfig = {
     appId: "1:146966889113:web:e0c92825038949959dae08"
   };
 
+// Инициализация Firebase
 firebase.initializeApp(firebaseConfig);
-// Инициализация Firebase Messaging
-const messaging = firebase.messaging();
 
-// Запрос разрешения на уведомления + получение токена
-function getFCMToken() {
-  // 1. Запрашиваем разрешение (только при первом запуске)
-  Notification.requestPermission().then((permission) => {
-    if (permission === 'granted') {
-      console.log('Notification permission granted.');
-      
-      // 2. Получаем FCM-токен устройства
-      messaging.getToken({ vapidKey: "BHRB-EfAZe9ZpVWLgdrVT-TalYRTwdgZiKmeAph0Me3zIBbvVMTBaSdKGNh3rLmhGIL0AdvBsrRX2z4ITlEIaBY" }).then((currentToken) => {
-        if (currentToken) {
-          console.log('FCM Token:', currentToken);
-          // 3. Отправляем токен на сервер (Google Apps Script)
-          saveTokenToServer(currentToken);
-        } else {
-          console.warn('No FCM token available.');
-        }
-      });
-    } else {
-      console.warn('Notification permission denied.');
-    }
-  }).catch((err) => {
-    console.error('Error requesting permission:', err);
-  });
+// Указываем правильный путь к сервис-воркеру
+async function setupMessaging() {
+  try {
+    // Регистрируем сервис-воркер с правильным путем
+    const registration = await navigator.serviceWorker.register(
+      '/petrovskiy/firebase-messaging-sw.js', 
+      { scope: '/petrovskiy/' }
+    );
+    
+    console.log('ServiceWorker registered');
+
+    const messaging = firebase.messaging();
+    
+    // Получаем токен с указанием зарегистрированного сервис-воркера
+    const token = await messaging.getToken({
+      vapidKey: "ВАШ_VAPID_KEY",
+      serviceWorkerRegistration: registration
+    });
+    
+    console.log('FCM Token:', token);
+    return token;
+    
+  } catch (error) {
+    console.error('Error:', error);
+    return null;
+  }
 }
+
+// Вызываем при загрузке приложения
+setupMessaging().then(token => {
+  if (token) {
+    saveTokenToServer(token); // Ваша функция для сохранения токена
+  }
+});
 
 // Отправка токена на сервер
 function saveTokenToServer(token) {
@@ -49,9 +58,6 @@ function saveTokenToServer(token) {
     .then(data => console.log('Token saved:', data))
     .catch(err => console.error('Error saving token:', err));
 }
-
-// Вызываем при загрузке PWA
-getFCMToken();
 
 // --------------------------------------- ОСНОВНОЙ КОД ------------------------------------------------ //
 
