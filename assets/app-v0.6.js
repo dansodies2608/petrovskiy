@@ -55,20 +55,25 @@ async function initPushNotifications() {
 }
 
 // Отправка токена на сервер
-function saveTokenToServer(token) {
+async function saveTokenToServer(token) {
   const url = `${SCRIPT_URL}?key=${SECRET_KEY}&action=save_token&token=${encodeURIComponent(token)}`;
   
-  // Используем режим 'no-cors' и отправляем как POST запрос
-  fetch(url, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: `key=${SECRET_KEY}&action=save_token&token=${encodeURIComponent(token)}`
-  })
-  .then(() => console.log('Token sent to server'))
-  .catch(err => console.error('Error saving token:', err));
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Ошибка сети');
+    
+    const data = await response.json();
+    console.log('Ответ сервера:', data);
+    
+    if (data.status !== 'success') {
+      throw new Error(data.message || 'Ошибка сохранения токена');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Ошибка сохранения токена:', error);
+    throw error;
+  }
 }
 
 // Инициализация при загрузке страницы
