@@ -56,10 +56,17 @@ async function initPushNotifications() {
 
 // Отправка токена на сервер
 async function saveTokenToServer(token) {
-  const url = `${SCRIPT_URL}?key=${SECRET_KEY}&action=save_token&token=${encodeURIComponent(token)}`;
+  const url = SCRIPT_URL;
   
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `key=${SECRET_KEY}&action=save_token&token=${encodeURIComponent(token)}`
+    });
+    
     if (!response.ok) throw new Error('Ошибка сети');
     
     const data = await response.json();
