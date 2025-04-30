@@ -18,16 +18,16 @@ if (!firebase.apps.length) {
 // 2. Регистрация Service Worker и инициализация Messaging
 async function initializeFirebaseMessaging() {
   try {
-    // Регистрируем Service Worker
-    const registration = await navigator.serviceWorker.register('firebase-messaging-sw.js', {
-      scope: '/'
+    const swUrl = '/petrovskiy/firebase-messaging-sw.js';
+    const scope = '/petrovskiy/';
+    
+    // Регистрируем Service Worker с правильным scope
+    const registration = await navigator.serviceWorker.register(swUrl, {
+      scope: scope
     });
     console.log('Service Worker зарегистрирован:', registration);
 
-    // Получаем экземпляр Messaging
     const messaging = firebase.messaging();
-    
-    // Явно указываем Service Worker для Messaging
     messaging.useServiceWorker(registration);
     
     return messaging;
