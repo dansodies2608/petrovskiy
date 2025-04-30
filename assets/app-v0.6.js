@@ -1,50 +1,61 @@
-const firebaseApp = firebase.initializeApp({
+// Инициализация Firebase
+const firebaseConfig = {
   apiKey: "AIzaSyAW2SdDTCpt25PVoB7ROt-tiVrFuabwE4I",
   authDomain: "petrovkiy-v1.firebaseapp.com",
   projectId: "petrovkiy-v1",
   storageBucket: "petrovkiy-v1.appspot.com",
   messagingSenderId: "146966889113",
   appId: "1:146966889113:web:e0c92825038949959dae08"
-});
+};
 
-const messaging = firebase.messaging();
+// Инициализируем Firebase
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
 
-function requestNotificationPermission() {
-  Notification.requestPermission().then((permission) => {
-    if (permission === 'granted') {
-      console.log('Разрешение получено!');
-      getFCMToken();
+// Регистрация Service Worker с явным указанием scope
+function registerServiceWorker() {
+  return new Promise((resolve, reject) => {
+    if ('serviceWorker' in navigator) {
+      const swUrl = '/petrovskiy/assets/firebase-messaging-sw.js';
+      
+      navigator.serviceWorker.register(swUrl, { 
+        scope: '/petrovskiy/' 
+      })
+      .then(registration => {
+        console.log('Service Worker зарегистрирован:', registration);
+        resolve(registration);
+      })
+      .catch(err => {
+        console.error('Ошибка регистрации SW:', err);
+        reject(err);
+      });
+    } else {
+      reject(new Error('Service Worker не поддерживается'));
     }
   });
 }
 
-function getFCMToken() {
-  messaging.getToken({ 
-    vapidKey: 'BHRB-EfAZe9ZpVWLgdrVT-TalYRTwdgZiKmeAph0Me3zIBbvVMTBaSdKGNh3rLmhGIL0AdvBsrRX2z4ITlEIaBY'
-  }).then((token) => {
-    console.log('FCM Token:', token);
-    saveTokenToServer(token);
-  });
+// Инициализация Messaging с указанием SW
+async function initMessaging() {
+  try {
+    const registration = await registerServiceWorker();
+    const messaging = firebase.messaging();
+    
+    // Указываем конкретный SW для Messaging
+    messaging.useServiceWorker(registration);
+    
+    return messaging;
+  } catch (error) {
+    console.error('Ошибка инициализации Messaging:', error);
+    throw error;
+  }
 }
 
-function saveTokenToServer(token) {
-  const url = 'https://script.google.com/macros/s/AKfycbzmiq2x3zkNetsY9DPJym3tVSPkuC4YY8lWa7w270PILhW4XgaaLAjAb0AkHk-pr2GbVw/exec';
-  fetch(url, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'save_token', token })
-  });
-}
-
-// Регистрация Service Worker
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('https://dansodies2608.github.io/petrovskiy/assets/firebase-messaging-sw.js')
-      .then(registration => {
-        console.log('SW registered');
-        requestNotificationPermission();
-      });
-  });
-}
+// Использование
+initMessaging().then(messaging => {
+  requestNotificationPermission(messaging);
+});
 
 // --------------------------------------- ОСНОВНОЙ КОД ------------------------------------------------ //
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmiq2x3zkNetsY9DPJym3tVSPkuC4YY8lWa7w270PILhW4XgaaLAjAb0AkHk-pr2GbVw/exec";
