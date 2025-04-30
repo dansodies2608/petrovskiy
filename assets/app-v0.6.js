@@ -75,11 +75,8 @@ async function saveTokenToServer(token) {
   }
 }
 
-// --------------------------------------- ОСНОВНОЙ КОД ------------------------------------------------ //
-
-let dashboardData = null;
-
-document.addEventListener("DOMContentLoaded", async function () {
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', async () => {
   // Проверяем поддержку сервис-воркеров
   if (!('serviceWorker' in navigator)) {
     console.error('Service workers are not supported');
@@ -100,7 +97,13 @@ document.addEventListener("DOMContentLoaded", async function () {
     console.log('Token refreshed');
     await initPushNotifications();
   });
-  
+});
+
+// --------------------------------------- ОСНОВНОЙ КОД ------------------------------------------------ //
+
+let dashboardData = null;
+
+document.addEventListener("DOMContentLoaded", function () {
   initDashboard();
 });
 
