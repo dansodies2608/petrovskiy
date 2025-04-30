@@ -1,63 +1,110 @@
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmiq2x3zkNetsY9DPJym3tVSPkuC4YY8lWa7w270PILhW4XgaaLAjAb0AkHk-pr2GbVw/exec";
 const SECRET_KEY = "YOUR_SECRET_KEY";
 
-// --------------------------------------- Уведомления ------------------------------------------------ //
+// --------------------------------------- УВЕДОМЛЕНИЯ ------------------------------------------------ //
 
+// Конфигурация Firebase
 const firebaseConfig = {
-    apiKey: "AIzaSyAW2SdDTCpt25PVoB7ROt-tiVrFuabwE4I",
-    authDomain: "petrovkiy-v1.firebaseapp.com",
-    projectId: "petrovkiy-v1",
-    storageBucket: "petrovkiy-v1.firebasestorage.app",
-    messagingSenderId: "146966889113",
-    appId: "1:146966889113:web:e0c92825038949959dae08"
-  };
+  apiKey: "AIzaSyAW2SdDTCpt25PVoB7ROt-tiVrFuabwE4I",
+  authDomain: "petrovkiy-v1.firebaseapp.com",
+  projectId: "petrovkiy-v1",
+  storageBucket: "petrovkiy-v1.appspot.com",
+  messagingSenderId: "146966889113",
+  appId: "1:146966889113:web:e0c92825038949959dae08"
+};
 
 // Инициализация Firebase
-firebase.initializeApp(firebaseConfig);
+const app = firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging(app);
 
-// Указываем правильный путь к сервис-воркеру
-async function setupMessaging() {
+// Функция запроса разрешения и получения токена
+async function initPushNotifications() {
   try {
-    // Регистрируем сервис-воркер с правильным путем
-    const registration = await navigator.serviceWorker.register(
-      '/petrovskiy/firebase-messaging-sw.js', 
-      { scope: '/petrovskiy/' }
-    );
-    
-    console.log('ServiceWorker registered');
+    // 1. Запрашиваем разрешение
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      console.warn('Notification permission denied');
+      return null;
+    }
 
-    const messaging = firebase.messaging();
-    
-    // Получаем токен с указанием зарегистрированного сервис-воркера
+    // 2. Регистрируем сервис-воркер
+    const registration = await navigator.serviceWorker.register('/petrovskiy/firebase-messaging-sw.js', {
+      scope: '/petrovskiy/',
+      updateViaCache: 'none'
+    });
+    console.log('Service Worker registered:', registration);
+
+    // 3. Получаем FCM токен
     const token = await messaging.getToken({
       vapidKey: "BHRB-EfAZe9ZpVWLgdrVT-TalYRTwdgZiKmeAph0Me3zIBbvVMTBaSdKGNh3rLmhGIL0AdvBsrRX2z4ITlEIaBY",
       serviceWorkerRegistration: registration
     });
-    
+
+    if (!token) {
+      throw new Error('No token received');
+    }
+
     console.log('FCM Token:', token);
+    await saveTokenToServer(token);
     return token;
-    
+
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Push notification initialization failed:', error);
     return null;
   }
 }
 
-// Вызываем при загрузке приложения
-setupMessaging().then(token => {
-  if (token) {
-    saveTokenToServer(token); // Ваша функция для сохранения токена
-  }
-});
+// Улучшенная функция сохранения токена
+async function saveTokenToServer(token) {
+  try {
+    const url = new URL(SCRIPT_URL);
+    url.searchParams.append('key', SECRET_KEY);
+    url.searchParams.append('action', 'save_token');
+    url.searchParams.append('token', token);
 
-// Отправка токена на сервер
-function saveTokenToServer(token) {
-  const url = `${SCRIPT_URL}?key=${SECRET_KEY}&action=save_token&token=${token}`;
-  fetch(url)
-    .then(response => response.json())
-    .then(data => console.log('Token saved:', data))
-    .catch(err => console.error('Error saving token:', err));
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Token successfully saved:', data);
+    return data;
+  } catch (error) {
+    console.error('Error saving token:', error);
+    throw error;
+  }
 }
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', async () => {
+  // Проверяем поддержку сервис-воркеров
+  if (!('serviceWorker' in navigator)) {
+    console.error('Service workers are not supported');
+    return;
+  }
+
+  // Проверяем поддержку уведомлений
+  if (!('Notification' in window)) {
+    console.error('Notifications are not supported');
+    return;
+  }
+
+  // Инициализируем push-уведомления
+  await initPushNotifications();
+
+  // Обработка обновления токена
+  messaging.onTokenRefresh(async () => {
+    console.log('Token refreshed');
+    await initPushNotifications();
+  });
+});
 
 // --------------------------------------- ОСНОВНОЙ КОД ------------------------------------------------ //
 
