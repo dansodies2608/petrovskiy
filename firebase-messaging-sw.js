@@ -15,7 +15,8 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
     body: payload.notification.body,
-    icon: '/petrovskiy/p-192.png'
+    icon: '/petrovskiy/p-192.png',
+    data: payload.data
   };
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
