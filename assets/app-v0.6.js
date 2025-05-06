@@ -522,6 +522,7 @@ function createSalesCard(point, pointData, type) {
         </div>
         <div class="growth-column">
           <div class="growth-header">Рост</div>
+          <div class="growth-value"></div>
           <div class="growth-value ${getGrowthClass(calculateGrowth(current.total, prevMonth.total))}">
             ${formatGrowth(calculateGrowth(current.total, prevMonth.total))}
           </div>
