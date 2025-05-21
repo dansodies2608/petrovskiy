@@ -1,26 +1,3 @@
-// Добавьте в начало app.js проверку на запуск в Telegram
-function isTelegramWebApp() {
-  return window.Telegram && window.Telegram.WebApp;
-}
-
-// Модифицируйте initDashboard для Telegram
-function initDashboard() {
-  if (isTelegramWebApp()) {
-    // Настройки для Telegram WebApp
-    document.body.classList.add('telegram-webapp');
-    Telegram.WebApp.expand();
-    Telegram.WebApp.enableClosingConfirmation();
-    Telegram.WebApp.setHeaderColor('#FABA12');
-    Telegram.WebApp.setBackgroundColor('#f8f8f8');
-  }
-  
-  createLoadingIndicator();
-  showLoading(true);
-  setupTabHandlers();
-  setupDateSelector();
-  loadData(true);
-}
-
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmiq2x3zkNetsY9DPJym3tVSPkuC4YY8lWa7w270PILhW4XgaaLAjAb0AkHk-pr2GbVw/exec";
 const SECRET_KEY = "YOUR_SECRET_KEY";
 
