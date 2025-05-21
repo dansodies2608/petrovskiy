@@ -21,25 +21,7 @@
     <title>Автомобильный дашборд</title>
     <link rel="manifest" href="manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/style.css">
-    <style>
-      /* Временные стили для отладки */
-      #debug-console {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 120px;
-        overflow: auto;
-        background: rgba(0,0,0,0.8);
-        color: white;
-        padding: 8px;
-        font-family: monospace;
-        font-size: 12px;
-        z-index: 9999;
-        display: none;
-      }
-    </style>
+<!--     <link rel="stylesheet" href="assets/style.css"> -->
 </head>
 
 <body>
@@ -99,8 +81,22 @@
 
 <!--     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script> -->
 <!--     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js"></script> -->
-    <script src="assets/app.js"></script>
-    
+<!--     <script src="assets/app.js"></script> -->
+<script>
+    function loadCSS(href) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = `${href}?t=${Date.now()}`;
+        document.head.appendChild(link);
+    }
+    loadCSS('assets/style.css');
+    function loadScript(src) {
+        const script = document.createElement('script');
+        script.src = `${src}?t=${Date.now()}`;
+        document.body.appendChild(script);
+    }
+    loadScript('assets/app.js')
+</script>  
 </body>
 
 </html>
