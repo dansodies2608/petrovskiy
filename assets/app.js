@@ -4,100 +4,100 @@ const SECRET_KEY = "YOUR_SECRET_KEY";
 // --------------------------------------- УВЕДОМЛЕНИЯ ------------------------------------------------ //
 
 // Конфигурация Firebase
-const firebaseConfig = {
-  apiKey: "AIzaSyAW2SdDTCpt25PVoB7ROt-tiVrFuabwE4I",
-  authDomain: "petrovkiy-v1.firebaseapp.com",
-  projectId: "petrovkiy-v1",
-  storageBucket: "petrovkiy-v1.appspot.com",
-  messagingSenderId: "146966889113",
-  appId: "1:146966889113:web:e0c92825038949959dae08"
-};
+// const firebaseConfig = {
+//   apiKey: "AIzaSyAW2SdDTCpt25PVoB7ROt-tiVrFuabwE4I",
+//   authDomain: "petrovkiy-v1.firebaseapp.com",
+//   projectId: "petrovkiy-v1",
+//   storageBucket: "petrovkiy-v1.appspot.com",
+//   messagingSenderId: "146966889113",
+//   appId: "1:146966889113:web:e0c92825038949959dae08"
+// };
 
 // Инициализация Firebase
-const app = firebase.initializeApp(firebaseConfig);
-const messaging = firebase.messaging(app);
+// const app = firebase.initializeApp(firebaseConfig);
+// const messaging = firebase.messaging(app);
 
 // Функция запроса разрешения и получения токена
-async function initPushNotifications() {
-  try {
-    // 1. Запрашиваем разрешение
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      console.warn('Notification permission denied');
-      return null;
-    }
+// async function initPushNotifications() {
+//   try {
+//     // 1. Запрашиваем разрешение
+//     const permission = await Notification.requestPermission();
+//     if (permission !== 'granted') {
+//       console.warn('Notification permission denied');
+//       return null;
+//     }
 
-    // 2. Регистрируем сервис-воркер
-    const registration = await navigator.serviceWorker.register('/petrovskiy/firebase-messaging-sw.js', {
-      scope: '/petrovskiy/',
-      updateViaCache: 'none'
-    });
-    console.log('Service Worker registered:', registration);
+//     // 2. Регистрируем сервис-воркер
+//     const registration = await navigator.serviceWorker.register('/petrovskiy/firebase-messaging-sw.js', {
+//       scope: '/petrovskiy/',
+//       updateViaCache: 'none'
+//     });
+//     console.log('Service Worker registered:', registration);
 
-    // 3. Получаем FCM токен
-    const token = await messaging.getToken({
-      vapidKey: "BHRB-EfAZe9ZpVWLgdrVT-TalYRTwdgZiKmeAph0Me3zIBbvVMTBaSdKGNh3rLmhGIL0AdvBsrRX2z4ITlEIaBY",
-      serviceWorkerRegistration: registration
-    });
+//     // 3. Получаем FCM токен
+//     const token = await messaging.getToken({
+//       vapidKey: "BHRB-EfAZe9ZpVWLgdrVT-TalYRTwdgZiKmeAph0Me3zIBbvVMTBaSdKGNh3rLmhGIL0AdvBsrRX2z4ITlEIaBY",
+//       serviceWorkerRegistration: registration
+//     });
 
-    if (!token) {
-      throw new Error('No token received');
-    }
+//     if (!token) {
+//       throw new Error('No token received');
+//     }
 
-    console.log('FCM Token:', token);
-    await saveTokenToServer(token);
-    return token;
+//     console.log('FCM Token:', token);
+//     await saveTokenToServer(token);
+//     return token;
 
-  } catch (error) {
-    console.error('Push notification initialization failed:', error);
-    return null;
-  }
-}
+//   } catch (error) {
+//     console.error('Push notification initialization failed:', error);
+//     return null;
+//   }
+// }
 
-// Отправка токена на сервер
-async function saveTokenToServer(token) {
-  try {
-    const url = `${SCRIPT_URL}?key=${SECRET_KEY}&action=save_token&token=${encodeURIComponent(token)}`;
+// // Отправка токена на сервер
+// async function saveTokenToServer(token) {
+//   try {
+//     const url = `${SCRIPT_URL}?key=${SECRET_KEY}&action=save_token&token=${encodeURIComponent(token)}`;
     
-    const response = await fetch(url, {
-      method: 'GET',
-      mode: 'cors'
-    });
+//     const response = await fetch(url, {
+//       method: 'GET',
+//       mode: 'cors'
+//     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+//     if (!response.ok) {
+//       throw new Error(`HTTP error! status: ${response.status}`);
+//     }
     
-    return await response.json();
-  } catch (error) {
-    console.error('Ошибка при сохранении токена:', error);
-    throw error;
-  }
-}
+//     return await response.json();
+//   } catch (error) {
+//     console.error('Ошибка при сохранении токена:', error);
+//     throw error;
+//   }
+// }
 
-// Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', async () => {
-  // Проверяем поддержку сервис-воркеров
-  if (!('serviceWorker' in navigator)) {
-    console.error('Service workers are not supported');
-    return;
-  }
+// // Инициализация при загрузке страницы
+// document.addEventListener('DOMContentLoaded', async () => {
+//   // Проверяем поддержку сервис-воркеров
+//   if (!('serviceWorker' in navigator)) {
+//     console.error('Service workers are not supported');
+//     return;
+//   }
 
-  // Проверяем поддержку уведомлений
-  if (!('Notification' in window)) {
-    console.error('Notifications are not supported');
-    return;
-  }
+//   // Проверяем поддержку уведомлений
+//   if (!('Notification' in window)) {
+//     console.error('Notifications are not supported');
+//     return;
+//   }
 
-  // Инициализируем push-уведомления
-  await initPushNotifications();
+//   // Инициализируем push-уведомления
+//   await initPushNotifications();
 
-  // Обработка обновления токена
-  messaging.onTokenRefresh(async () => {
-    console.log('Token refreshed');
-    await initPushNotifications();
-  });
-});
+//   // Обработка обновления токена
+//   messaging.onTokenRefresh(async () => {
+//     console.log('Token refreshed');
+//     await initPushNotifications();
+//   });
+// });
 
 // --------------------------------------- ОСНОВНОЙ КОД ------------------------------------------------ //
 
