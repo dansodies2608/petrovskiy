@@ -57,7 +57,16 @@
                 <select id="month-select">
                     <option value="1">Январь</option>
                     <option value="2">Февраль</option>
-                    <!-- Остальные месяцы -->
+                    <option value="3">Март</option>
+                    <option value="4">Апрель</option>
+                    <option value="5">Май</option>
+                    <option value="6">Июнь</option>
+                    <option value="7">Июль</option>
+                    <option value="8">Август</option>
+                    <option value="9">Сентябрь</option>
+                    <option value="10">Октябрь</option>
+                    <option value="11">Ноябрь</option>
+                    <option value="12">Декабрь</option>
                 </select>
 
                 <select id="year-select">
@@ -76,15 +85,22 @@
             <button data-count="4" class="tab-btn">БАЛАНС</button>
         </div>
 
-        <!-- Контейнеры для вкладок -->
+        <!-- Вкладка "Новые авто" -->
         <div class="tab-content active" id="new-cars-tab">
-            <div class="cards-container"></div>
+            <div class="cards-container">
+                <!-- Карточки будут создаваться динамически -->
+            </div>
         </div>
+
+        <!-- Вкладка "Авто с пробегом" -->
         <div class="tab-content" id="used-cars-tab">
             <div class="cards-container"></div>
         </div>
+
         <div class="tab-content" id="service-tab"></div>
+        <!-- Новая вкладка МКЦ -->
         <div class="tab-content" id="mkc-tab"></div>
+        <!-- Вкладка "Баланс" -->
         <div class="tab-content" id="balance-tab"></div>
     </div>
 
