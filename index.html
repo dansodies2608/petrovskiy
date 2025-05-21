@@ -95,79 +95,10 @@
         <!-- Вкладка "Баланс" -->
         <div class="tab-content" id="balance-tab"></div>
     </div>
-    <!-- Отладочная консоль -->
-    <div id="debug-console"></div>
-    <!-- Скрипт инициализации Telegram WebApp -->
-    <script>
-      // Функция для отладки
-      function debugLog(message) {
-        console.log(message);
-        const debugConsole = document.getElementById('debug-console');
-        if (debugConsole) {
-          debugConsole.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${message}</div>`;
-          debugConsole.scrollTop = debugConsole.scrollHeight;
-        }
-      }
-      
-      // Показать отладочную консоль при долгом нажатии
-      document.addEventListener('longpress', () => {
-        const debugConsole = document.getElementById('debug-console');
-        debugConsole.style.display = debugConsole.style.display === 'none' ? 'block' : 'none';
-      });
-      
-      debugLog('Начало загрузки страницы');
-    </script>
 
-    <!-- Динамическая загрузка скриптов с обработкой ошибок -->
-    <script>
-      function loadScript(src, integrity) {
-        return new Promise((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = src;
-          if (integrity) script.integrity = integrity;
-          script.crossOrigin = 'anonymous';
-          script.onload = () => {
-            debugLog(`Скрипт загружен: ${src}`);
-            resolve();
-          };
-          script.onerror = (err) => {
-            debugLog(`Ошибка загрузки скрипта ${src}: ${err}`);
-            reject(err);
-          };
-          document.body.appendChild(script);
-        });
-      }
-
-      // Последовательная загрузка скриптов
-      async function loadAllScripts() {
-        try {
-          await loadScript('https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js');
-          await loadScript('https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js');
-          await loadScript(`assets/app.js?v=${Date.now()}`);
-
-          debugLog('Все скрипты успешно загружены');
-          
-          // Инициализация Telegram WebApp
-          if (window.Telegram?.WebApp) {
-            Telegram.WebApp.ready();
-            Telegram.WebApp.expand();
-            debugLog('Telegram WebApp инициализирован');
-            
-            // Настройки для мобильной версии
-            if (Telegram.WebApp.isMobile) {
-              document.documentElement.style.fontSize = '14px';
-              document.querySelector('.tabs').style.position = 'fixed';
-            }
-          }
-        } catch (error) {
-          debugLog(`Критическая ошибка: ${error.message}`);
-          alert('Ошибка загрузки приложения. Пожалуйста, попробуйте позже.');
-        }
-      }
-
-      // Запуск загрузки после полной загрузки DOM
-      document.addEventListener('DOMContentLoaded', loadAllScripts);
-    </script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js"></script>
+    <script src="assets/app.js"></script>
     
 </body>
 
