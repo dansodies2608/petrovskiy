@@ -134,14 +134,8 @@
       // Последовательная загрузка скриптов
       async function loadAllScripts() {
         try {
-          await loadScript(
-            'https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js',
-            'sha256-...'
-          );
-          await loadScript(
-            'https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js',
-            'sha256-...'
-          );
+          await loadScript('https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js');
+          await loadScript('https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js');
           await loadScript(`assets/app.js?v=${Date.now()}`);
           
           debugLog('Все скрипты успешно загружены');
