@@ -341,14 +341,14 @@ function processSalesData(currentData, prevData, prevYearData, plans) {
 
   // Обрабатываем точки в нужном порядке
   orderedPoints.forEach(point => {
-    if (plans?.[point]?.total > 0) {
+    // if (plans?.[point]?.total > 0) {
       result[point] = {
         current: processPeriodData(currentData, point),
         prevMonth: processPeriodData(prevData, point),
         prevYear: processPeriodData(prevYearData, point),
         plan: plans[point]
       };
-    }
+    // }
   });
 
   return result;
