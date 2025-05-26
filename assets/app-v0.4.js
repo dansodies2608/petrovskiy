@@ -392,7 +392,8 @@ function updateNewCarsTab(data) {
   container.innerHTML = "";
 
   for (const point in data) {
-    const card = (point, data[point], "new");
+    // const card = (point, data[point], "new");
+    const card = createSalesCard(point, data[point], "new");
     container.appendChild(card);
   }
 }
@@ -406,7 +407,8 @@ function updateUsedCarsTab(data) {
   // 1. Добавляем карточки по точкам продаж
   for (const point in data) {
     if (point !== 'aggregatedASPData' && data[point]) {
-      const card = (point, data[point], "used");
+      // const card = (point, data[point], "used");
+      const card = createSalesCard(point, data[point], "used");
       container.appendChild(card);
     }
   }
