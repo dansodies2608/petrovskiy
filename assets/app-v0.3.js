@@ -346,7 +346,7 @@ function processSalesData(currentData, prevData, prevYearData, plans) {
         current: processPeriodData(currentData, point),
         prevMonth: processPeriodData(prevData, point),
         prevYear: processPeriodData(prevYearData, point),
-        plan: plans[point]
+        plan: plans[point] || { total: 0 }
       };
     // }
   });
@@ -392,7 +392,7 @@ function updateNewCarsTab(data) {
   container.innerHTML = "";
 
   for (const point in data) {
-    const card = createSalesCard(point, data[point], "new");
+    const card = (point, data[point], "new");
     container.appendChild(card);
   }
 }
@@ -406,7 +406,7 @@ function updateUsedCarsTab(data) {
   // 1. Добавляем карточки по точкам продаж
   for (const point in data) {
     if (point !== 'aggregatedASPData' && data[point]) {
-      const card = createSalesCard(point, data[point], "used");
+      const card = (point, data[point], "used");
       container.appendChild(card);
     }
   }
@@ -479,7 +479,7 @@ function createSalesCard(point, pointData, type) {
     <div class="stats-grid">
       <div class="stat-item">
         <span class="stat-label">План</span>
-        <span class="stat-value">${plan.total} шт</span>
+        <span class="stat-value">${plan?.total || 0} шт</span>
       </div>
       <div class="stat-item">
         <span class="stat-label">Факт</span>
@@ -487,8 +487,8 @@ function createSalesCard(point, pointData, type) {
       </div>
       <div class="stat-item">
         <span class="stat-label">Откл.</span>
-        <span class="stat-value ${getDeviationClass(calculateDeviation(current.total, plan.total))}">
-          ${formatDeviation(calculateDeviation(current.total, plan.total))}
+        <span class="stat-value ${getDeviationClass(calculateDeviation(current.total, plan?.total || 0))}">
+          ${formatDeviation(calculateDeviation(current.total, plan?.total || 0))}
         </span>
       </div>
       <div class="stat-item">
