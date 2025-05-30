@@ -1,5 +1,5 @@
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmiq2x3zkNetsY9DPJym3tVSPkuC4YY8lWa7w270PILhW4XgaaLAjAb0AkHk-pr2GbVw/exec";
-const SECRET_KEY = "YOUR_SECRET_KEY";
+const SECRET_KEY = "b3821cce5703d067b14f4e63c9e65fd86ce24f5de0438f8a69a006167f2899ca";
 
 // --------------------------------------- УВЕДОМЛЕНИЯ ------------------------------------------------ //
 
